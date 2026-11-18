@@ -1,0 +1,412 @@
+extends Control
+## Builds all UI in code: title / character creation, game screen, and end-of-run overlay.
+
+const MapView := preload("res://scripts/map_view.gd")
+
+## Required CC-BY-4.0 attribution for SRD 5.2.1 content. Keep this in-game and on the store listing.
+const ATTRIBUTION := "This work includes material from the System Reference Document 5.2.1 (\"SRD 5.2.1\") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode."
+
+const HELP := [
+	"Tap a neighbouring square to move or attack (diagonals too).",
+	"Tap a distant explored square to auto-walk; it stops when enemies appear.",
+	"Tap yourself to wait, or to descend when standing on >.",
+	"Wizards: tap a visible enemy to cast Fire Bolt.",
+	"@ you  > stairs  ! potion  $ gold  / weapon  [ armor  ~ water/lava",
+]
+
+var game: Game
+var chosen_class := "Fighter"
+var chosen_species := "Human"
+
+var title_screen: Control
+var game_screen: Control
+var overlay: Control
+var overlay_label: Label
+var desc_label: Label
+var status_label: Label
+var log_label: RichTextLabel
+var map_view: MapView
+var btn_wait: Button
+var btn_potion: Button
+var btn_ability: Button
+var btn_bolt: Button
+var btn_descend: Button
+var btn_help: Button
+var travel_timer: Timer
+
+
+func _ready() -> void:
+	var th := Theme.new()
+	th.default_font_size = 26
+	theme = th
+	var bg := ColorRect.new()
+	bg.color = Color(0.03, 0.03, 0.05)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	_build_title()
+	_build_game()
+	_build_overlay()
+	travel_timer = Timer.new()
+	travel_timer.wait_time = 0.07
+	travel_timer.timeout.connect(_on_travel_tick)
+	add_child(travel_timer)
+	_show_title()
+
+
+# --- UI construction ---------------------------------------------------------------
+
+func _full_margin(top: int) -> MarginContainer:
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.add_theme_constant_override("margin_left", 20)
+	m.add_theme_constant_override("margin_right", 20)
+	m.add_theme_constant_override("margin_top", top)
+	m.add_theme_constant_override("margin_bottom", 28)
+	add_child(m)
+	return m
+
+
+func _label(text: String, font_size: int, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+
+func _choice_button(text: String, group: ButtonGroup, pressed: bool) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.toggle_mode = true
+	b.button_group = group
+	b.button_pressed = pressed
+	b.custom_minimum_size = Vector2(0, 76)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return b
+
+
+func _action_button(parent: Control, text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(0, 88)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_size_override("font_size", 22)
+	b.pressed.connect(cb)
+	parent.add_child(b)
+	return b
+
+
+func _build_title() -> void:
+	title_screen = _full_margin(60)
+	var v := VBoxContainer.new()
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 16)
+	title_screen.add_child(v)
+
+	var t := _label("DEPTHS OF THE\nHOLLOW KING", 54, Color("e8c170"))
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var sub := _label("20 floors. One hero. A new dungeon every run.", 22, Color(0.7, 0.7, 0.75))
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(sub)
+
+	v.add_child(_label("Class", 24, Color(0.85, 0.85, 0.9)))
+	var cls_row := HBoxContainer.new()
+	v.add_child(cls_row)
+	var cg := ButtonGroup.new()
+	for c in GameData.CLASSES.keys():
+		var b := _choice_button(c, cg, c == chosen_class)
+		b.pressed.connect(_on_class_pick.bind(c))
+		cls_row.add_child(b)
+
+	v.add_child(_label("Species", 24, Color(0.85, 0.85, 0.9)))
+	var sp_row := HBoxContainer.new()
+	v.add_child(sp_row)
+	var sg := ButtonGroup.new()
+	for s in GameData.SPECIES.keys():
+		var b := _choice_button(s, sg, s == chosen_species)
+		b.pressed.connect(_on_species_pick.bind(s))
+		sp_row.add_child(b)
+
+	desc_label = _label("", 21, Color(0.8, 0.8, 0.85))
+	desc_label.custom_minimum_size = Vector2(0, 200)
+	v.add_child(desc_label)
+
+	var start := Button.new()
+	start.text = "Descend"
+	start.custom_minimum_size = Vector2(0, 96)
+	start.add_theme_font_size_override("font_size", 32)
+	start.pressed.connect(_on_start)
+	v.add_child(start)
+
+	var credits := _label("5E compatible. " + ATTRIBUTION, 14, Color(0.5, 0.5, 0.55))
+	v.add_child(credits)
+
+
+func _build_game() -> void:
+	game_screen = _full_margin(44)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	game_screen.add_child(v)
+
+	status_label = _label("", 22, Color(0.93, 0.9, 0.82))
+	v.add_child(status_label)
+
+	log_label = RichTextLabel.new()
+	log_label.bbcode_enabled = true
+	log_label.scroll_following = true
+	log_label.custom_minimum_size = Vector2(0, 176)
+	log_label.add_theme_font_size_override("normal_font_size", 19)
+	v.add_child(log_label)
+
+	map_view = MapView.new()
+	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_view.cell_tapped.connect(_on_cell_tapped)
+	v.add_child(map_view)
+
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	v.add_child(grid)
+	btn_wait = _action_button(grid, "Wait", _on_wait)
+	btn_potion = _action_button(grid, "Potion", _on_potion)
+	btn_ability = _action_button(grid, "Ability", _on_ability)
+	btn_bolt = _action_button(grid, "Fire Bolt", _on_bolt)
+	btn_descend = _action_button(grid, "Descend >", _on_descend)
+	btn_help = _action_button(grid, "Help", _on_help)
+
+
+func _build_overlay() -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.82)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	overlay = dim
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(cc)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 24)
+	cc.add_child(v)
+	overlay_label = _label("", 30, Color("e8c170"))
+	overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	overlay_label.custom_minimum_size = Vector2(600, 0)
+	v.add_child(overlay_label)
+	var again := Button.new()
+	again.text = "New Run"
+	again.custom_minimum_size = Vector2(0, 96)
+	again.pressed.connect(_show_title)
+	v.add_child(again)
+
+
+# --- Screens -----------------------------------------------------------------------
+
+func _show_title() -> void:
+	_stop_travel()
+	title_screen.show()
+	game_screen.hide()
+	overlay.hide()
+	_update_desc()
+
+
+func _on_class_pick(c: String) -> void:
+	chosen_class = c
+	_update_desc()
+
+
+func _on_species_pick(s: String) -> void:
+	chosen_species = s
+	_update_desc()
+
+
+func _update_desc() -> void:
+	var c: Dictionary = GameData.CLASSES[chosen_class]
+	var s: Dictionary = GameData.SPECIES[chosen_species]
+	desc_label.text = "%s (d%d Hit Die): %s\n\n%s: %s" % [chosen_class, c["hit_die"], c["desc"], chosen_species, s["desc"]]
+
+
+func _on_start() -> void:
+	game = Game.new()
+	game.new_game(chosen_class, chosen_species)
+	map_view.game = game
+	title_screen.hide()
+	game_screen.show()
+	overlay.hide()
+	_refresh()
+
+
+func _refresh() -> void:
+	if game == null:
+		return
+	var hd: Dictionary = game.hero
+	var nxt := game.xp_next()
+	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d%s" % [
+		game.floor_num, Game.MAX_FLOOR, game.floor_theme["name"],
+		hd["species"], hd["cls"], hd["level"], hd["hp"], hd["hp_max"], game.hero_ac(),
+		hd["xp"], (str(nxt) if nxt > 0 else "max"), hd["gold"],
+		"  [HIDDEN]" if hd["hidden"] else ""]
+	log_label.text = "\n".join(PackedStringArray(game.log_lines))
+
+	var pots: int = hd["potions"] + hd["greater"]
+	btn_potion.text = "Potion (%d)" % pots
+	btn_potion.disabled = pots == 0 or game.bonus_used
+	match hd["cls"]:
+		"Fighter":
+			btn_ability.text = "Second Wind (%d)" % hd["second_wind"]
+			btn_ability.disabled = hd["second_wind"] <= 0 or game.bonus_used
+		"Rogue":
+			btn_ability.text = "Hidden" if hd["hidden"] else "Hide"
+			btn_ability.disabled = hd["hidden"] or game.bonus_used
+		"Wizard":
+			btn_ability.text = "Magic Missile (%d)" % hd["slots"]
+			btn_ability.disabled = hd["slots"] <= 0
+	btn_bolt.visible = hd["cls"] == "Wizard"
+	btn_descend.disabled = not game.on_stairs()
+	map_view.queue_redraw()
+
+	if game.over:
+		_stop_travel()
+		if game.won:
+			overlay_label.text = "VICTORY\n\nThe Hollow King is dust.\n\nLevel %d %s %s\n%d kills - %d gold\nSeed %d" % [
+				hd["level"], hd["species"], hd["cls"], hd["kills"], hd["gold"], game.seed_value]
+		else:
+			overlay_label.text = "YOU DIED\n\nSlain by a %s\non floor %d (%s).\n\nLevel %d %s %s\n%d kills - %d gold\nSeed %d" % [
+				game.death_cause, game.floor_num, game.floor_theme["name"],
+				hd["level"], hd["species"], hd["cls"], hd["kills"], hd["gold"], game.seed_value]
+		overlay.show()
+
+
+# --- Input -------------------------------------------------------------------------
+
+func _on_cell_tapped(c: Vector2i) -> void:
+	if game == null or game.over:
+		return
+	_stop_travel()
+	var hp: Vector2i = game.hero["pos"]
+	var d := c - hp
+	if d == Vector2i.ZERO:
+		if game.on_stairs():
+			game.player_descend()
+		else:
+			game.player_wait()
+	elif absi(d.x) <= 1 and absi(d.y) <= 1:
+		game.player_step(d)
+	else:
+		var m = game.visible_monster_at(c)
+		if m != null and game.hero["cls"] == "Wizard":
+			game.player_firebolt(m)
+		elif m != null:
+			game.describe(m)
+			game.player_step_toward(c)
+		elif game.explored_walkable(c) and not game.any_monster_visible():
+			game.plan_travel(c)
+			if not game.travel.is_empty():
+				travel_timer.start()
+		else:
+			game.player_step_toward(c)
+	_refresh()
+
+
+func _on_travel_tick() -> void:
+	if game == null or game.over or game.travel.is_empty() or game.any_monster_visible():
+		_stop_travel()
+		_refresh()
+		return
+	var nxt: Vector2i = game.travel.pop_front()
+	var here: Vector2i = game.hero["pos"]
+	if not game.player_step(nxt - here):
+		game.travel.clear()
+	_refresh()
+
+
+func _stop_travel() -> void:
+	if travel_timer:
+		travel_timer.stop()
+	if game:
+		game.travel.clear()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if game == null or game.over or not game_screen.visible:
+		return
+	var key := event as InputEventKey
+	if key == null or not key.pressed:
+		return
+	var dir := Vector2i.ZERO
+	match key.keycode:
+		KEY_UP, KEY_W, KEY_K, KEY_KP_8:
+			dir = Vector2i(0, -1)
+		KEY_DOWN, KEY_S, KEY_J, KEY_KP_2:
+			dir = Vector2i(0, 1)
+		KEY_LEFT, KEY_A, KEY_H, KEY_KP_4:
+			dir = Vector2i(-1, 0)
+		KEY_RIGHT, KEY_D, KEY_L, KEY_KP_6:
+			dir = Vector2i(1, 0)
+		KEY_Y, KEY_KP_7:
+			dir = Vector2i(-1, -1)
+		KEY_U, KEY_KP_9:
+			dir = Vector2i(1, -1)
+		KEY_B, KEY_KP_1:
+			dir = Vector2i(-1, 1)
+		KEY_N, KEY_KP_3:
+			dir = Vector2i(1, 1)
+		KEY_SPACE, KEY_PERIOD, KEY_KP_5:
+			_on_wait()
+			return
+		KEY_ENTER, KEY_KP_ENTER:
+			_on_descend()
+			return
+		KEY_Q:
+			_on_potion()
+			return
+		KEY_F:
+			_on_ability()
+			return
+		KEY_E:
+			_on_bolt()
+			return
+		_:
+			return
+	_stop_travel()
+	var here: Vector2i = game.hero["pos"]
+	game.player_step_toward(here + dir)
+	_refresh()
+	get_viewport().set_input_as_handled()
+
+
+func _on_wait() -> void:
+	_stop_travel()
+	game.player_wait()
+	_refresh()
+
+
+func _on_potion() -> void:
+	game.player_potion()
+	_refresh()
+
+
+func _on_ability() -> void:
+	_stop_travel()
+	game.player_ability()
+	_refresh()
+
+
+func _on_bolt() -> void:
+	_stop_travel()
+	game.player_firebolt(null)
+	_refresh()
+
+
+func _on_descend() -> void:
+	_stop_travel()
+	game.player_descend()
+	_refresh()
+
+
+func _on_help() -> void:
+	for line in HELP:
+		game.say(line)
+	_refresh()

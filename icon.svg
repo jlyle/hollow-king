@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b0b12"/>
+  <g font-family="monospace" font-weight="bold" text-anchor="middle">
+    <text x="96" y="150" font-size="96" fill="#4a3b5e">#</text>
+    <text x="416" y="150" font-size="96" fill="#4a3b5e">#</text>
+    <text x="96" y="440" font-size="96" fill="#4a3b5e">#</text>
+    <text x="416" y="440" font-size="96" fill="#4a3b5e">#</text>
+    <text x="256" y="330" font-size="260" fill="#e8c170">@</text>
+    <text x="400" y="300" font-size="110" fill="#c58bff">K</text>
+  </g>
+</svg>
