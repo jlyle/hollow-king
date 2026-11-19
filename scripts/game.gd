@@ -52,6 +52,7 @@ var bonus_used := false
 var sneak_used := false
 var uncanny_used := false
 var death_cause := ""
+var events: Array = []           ## R-14/R-15: sound + haptic cues for the UI to play, drained each refresh
 var _spot_i := 0
 
 
@@ -322,6 +323,12 @@ static func delete_save() -> void:
 
 # --- Queries used by the UI --------------------------------------------------------
 
+## Queue a presentation cue (sound/haptic). The UI drains `events` after each action.
+func fx(name: String) -> void:
+	if not events.has(name):
+		events.append(name)
+
+
 func say(text: String) -> void:
 	log_lines.append(text)
 	while log_lines.size() > LOG_SIZE:
@@ -495,6 +502,7 @@ func player_step(d: Vector2i) -> bool:
 		_hero_attack_action(m, false)
 	else:
 		hero["pos"] = t
+		fx("step")
 		_pickup()
 		if t == stairs:
 			if stairs_sealed():
@@ -552,6 +560,7 @@ func player_potion() -> void:
 		heal = roll(2, 4) + 2
 		say("You drink a Potion of Healing (+%d HP)." % heal)
 	_heal(heal)
+	fx("heal")
 	bonus_used = true
 
 
@@ -610,6 +619,7 @@ func player_descend() -> void:
 		say("[color=#ff6b6b]The stairs are sealed until the %s falls.[/color]" % _guardian_name())
 		return
 	var next := floor_num + 1
+	fx("descend")
 	if next in LONG_REST_FLOORS:
 		_long_rest()
 	else:
@@ -674,6 +684,7 @@ func cast(key: String, pref = null) -> void:
 	elif lvl == -1:
 		hero["channel"] -= 1
 	hero["hidden"] = false
+	fx("spell")
 	var is_bonus: bool = sp["cast"] == "bonus"
 	if is_bonus:
 		bonus_used = true
@@ -729,10 +740,12 @@ func cast(key: String, pref = null) -> void:
 		"healing_word":
 			var amt := roll(2 * (1 + up), 4) + _caster_mod()
 			_heal(amt)
+			fx("heal")
 			say("Healing Word: +%d HP." % amt)
 		"cure_wounds":
 			var amt := roll(2 * (1 + up), 8) + _caster_mod()
 			_heal(amt)
+			fx("heal")
 			say("Cure Wounds: +%d HP." % amt)
 		"turn_undead":
 			var turned := 0
@@ -789,8 +802,11 @@ func _spell_attack(t: Dictionary, sname: String, dice: Array, kind: String) -> b
 		hit = _is_hit(r, bonus, t["ac"])
 	if not hit:
 		say("Your %s misses the %s." % [sname, t["name"]])
+		fx("miss")
 		return false
 	var crit := r == 20
+	if crit:
+		fx("crit")
 	var dmg := roll(int(dice[0]) * (2 if crit else 1), dice[1])
 	say("%s %s the %s for %d %s." % [sname, "CRITS" if crit else "hits", t["name"], dmg, kind])
 	_damage_monster(t, dmg, crit, kind)
@@ -871,6 +887,7 @@ func _second_wind() -> void:
 	hero["second_wind"] -= 1
 	var amt := roll(1, 10) + int(hero["level"])
 	_heal(amt)
+	fx("heal")
 	bonus_used = true
 	say("Second Wind! You regain %d HP." % amt)
 
@@ -907,6 +924,7 @@ func _rage() -> void:
 		return
 	hero["rage_uses"] -= 1
 	hero["rage"] = 10
+	fx("crit")
 	bonus_used = true
 	say("[color=#ff6b4a]You RAGE! Half damage from weapons and claws, +%d melee damage.[/color]" % _rage_bonus())
 
@@ -1027,8 +1045,10 @@ func _weapon_attack(m: Dictionary, ranged: bool) -> void:
 	var wname: String = "longbow" if ranged else String(c["weapon"]).to_lower()
 	if not hit:
 		say("Your %s misses the %s." % [wname, m["name"]])
+		fx("miss")
 		return
 	var crit := r == 20
+	fx("crit" if crit else "hit")
 	var dice: Array = [1, 8] if ranged else c["dice"]
 	var mult := 2 if crit else 1
 	var dmg: int = roll(int(dice[0]) * mult, dice[1]) + ab_mod + int(hero["weapon_bonus"])
@@ -1079,6 +1099,7 @@ func _kill(m: Dictionary) -> void:
 	hero["xp"] += gained
 	hero["kills"] += 1
 	say("The %s is destroyed! (+%d XP)" % [m["name"], gained])
+	fx("kill")
 	if is_same(m, target):
 		target = null
 	if m.get("restrained", false) and hero["conc"] == "ensnaring_strike":
@@ -1089,6 +1110,7 @@ func _kill(m: Dictionary) -> void:
 	if m.get("boss", false):
 		won = true
 		over = true
+		fx("victory")
 		say("[color=#e8c170]The Hollow King crumbles to dust. The dungeon falls silent.[/color]")
 	_check_level_up()
 
@@ -1117,6 +1139,7 @@ func _check_level_up() -> void:
 		for k in after:
 			hero[k] = int(hero[k]) + int(after[k]) - int(before[k])
 		say("[color=#ffe066]Level up! You are now level %d (+%d HP).[/color]" % [lvl, gain])
+		fx("levelup")
 		var feat := _new_feature(String(hero["cls"]), lvl)
 		if feat != "":
 			say("New: %s" % feat)
@@ -1142,6 +1165,7 @@ func _heal(amt: int) -> void:
 func _hurt_hero(dmg: int, source: String) -> void:
 	hero["hp"] -= dmg
 	travel.clear()
+	fx("hurt")
 	if hero["hp"] <= 0:
 		if hero["relentless"]:
 			hero["relentless"] = false
@@ -1151,6 +1175,7 @@ func _hurt_hero(dmg: int, source: String) -> void:
 			hero["hp"] = 0
 			over = true
 			death_cause = source
+			fx("death")
 			say("[color=#ff5555]You were slain by %s on floor %d.[/color]" % [source, floor_num])
 			return
 	# Concentration check: CON save, DC 10 or half the damage.
@@ -1309,6 +1334,7 @@ func _monster_special(m: Dictionary, dist: int, sees: bool) -> bool:
 				raised += 1
 		if raised > 0:
 			say("[color=#c58bff]The %s %s[/color]" % [m["name"], sm["msg"]])
+			fx("summon")
 			return true
 	elif m.has("summon") and not cds.has("summon"):
 		cds["summon"] = 2  # first summon a couple of turns after waking
@@ -1334,11 +1360,13 @@ func _monster_special(m: Dictionary, dist: int, sees: bool) -> bool:
 			"attack":
 				if dist >= 2 and dist <= int(sp["range"]):
 					cds[sname] = sp["cd"]
+					fx("enemy_spell")
 					_monster_attack_rolls(m, 1, int(sp["atk"]), sp["dmg"], String(sp["dtype"]), "casts " + sname + " at")
 					return true
 			"save":
 				if dist <= int(sp["range"]):
 					cds[sname] = sp["cd"]
+					fx("enemy_spell")
 					_monster_save_spell(m, sp)
 					return true
 	if m.has("ranged") and dist >= 2:
@@ -1663,6 +1691,7 @@ func _pickup() -> void:
 		return
 	var kind: String = items[p]
 	items.erase(p)
+	fx("pickup")
 	match kind:
 		"potion":
 			hero["potions"] += 1

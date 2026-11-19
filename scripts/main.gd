@@ -25,6 +25,7 @@ const CONTROLS := [
 	["E", "Ranged attack: Fire Bolt / Sacred Flame / Longbow"],
 	["R", "Spells menu (casters) / Reckless toggle (Barbarian)"],
 	["?  or  F1", "Open / close this screen"],
+	["Settings button", "Sound, haptics, ASCII or Tiles display"],
 	["Esc", "Close this screen"],
 	["MAP SYMBOLS", ""],
 	["@", "You (faded = hidden)"],
@@ -77,6 +78,18 @@ var btn_descend: Button
 var btn_help: Button
 var controls_panel: Control
 var travel_timer: Timer
+var btn_settings: Button
+var settings_panel: Control
+
+# --- Settings, sound and haptics (R-14 .. R-17) ---
+const SETTINGS_PATH := "user://settings.cfg"
+const SOUNDS := ["step", "hit", "crit", "miss", "hurt", "kill", "spell", "heal", "pickup",
+	"levelup", "descend", "death", "victory", "enemy_spell", "summon"]
+const HAPTICS := {"hurt": 40, "crit": 30, "levelup": 80, "death": 400}   ## milliseconds
+var settings := {"sound": true, "haptics": true, "tiles": false}
+var sounds := {}
+var sfx: Array = []
+var sfx_i := 0
 var btn_start: Button
 var btn_continue: Button
 
@@ -92,8 +105,12 @@ func _ready() -> void:
 	_build_title()
 	_build_game()
 	_build_overlay()
+	_load_settings()
+	_build_audio()
 	_build_spells()
 	_build_controls()
+	_build_settings()
+	map_view.use_tiles = settings["tiles"]
 	# Let the Android back button close the Controls screen instead of quitting.
 	get_tree().quit_on_go_back = false
 	travel_timer = Timer.new()
@@ -191,7 +208,17 @@ func _build_title() -> void:
 	ctl.text = "Controls"
 	ctl.custom_minimum_size = Vector2(0, 72)
 	ctl.pressed.connect(_show_controls)
-	v.add_child(ctl)
+	ctl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var title_btns := HBoxContainer.new()
+	title_btns.add_theme_constant_override("separation", 8)
+	v.add_child(title_btns)
+	title_btns.add_child(ctl)
+	var st := Button.new()
+	st.text = "Settings"
+	st.custom_minimum_size = Vector2(0, 72)
+	st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	st.pressed.connect(_show_settings)
+	title_btns.add_child(st)
 
 	btn_continue = Button.new()
 	btn_continue.custom_minimum_size = Vector2(0, 96)
@@ -243,6 +270,7 @@ func _build_game() -> void:
 	btn_spells = _action_button(grid, "Spells", _on_spells)
 	btn_descend = _action_button(grid, "Descend >", _on_descend)
 	btn_help = _action_button(grid, "Controls ?", _show_controls)
+	btn_settings = _action_button(grid, "Settings", _show_settings)
 
 
 func _build_overlay() -> void:
@@ -351,6 +379,8 @@ func _notification(what: int) -> void:
 			_hide_controls()
 		elif spells_panel and spells_panel.visible:
 			_hide_spells()
+		elif settings_panel and settings_panel.visible:
+			settings_panel.hide()
 		elif game_screen and game_screen.visible and not (game and game.over):
 			_show_controls()  # back button = pause screen, not an accidental quit
 		else:
@@ -420,6 +450,7 @@ func _refresh() -> void:
 	if game == null:
 		return
 	game.save_run()  # R-09: autosave after every action (deletes the save once the run is over)
+	_play_events()
 	var hd: Dictionary = game.hero
 	var nxt := game.xp_next()
 	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d\n%s" % [
@@ -543,6 +574,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if controls_panel.visible:
 		if key.keycode in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 			_hide_controls()
+		get_viewport().set_input_as_handled()
+		return
+	if settings_panel.visible:
+		if key.keycode == KEY_ESCAPE:
+			settings_panel.hide()
 		get_viewport().set_input_as_handled()
 		return
 	if spells_panel.visible:
@@ -708,3 +744,126 @@ func _on_descend() -> void:
 	game.player_descend()
 	_refresh()
 
+
+# --- Settings, sound and haptics (R-14 .. R-17) ---------------------------------------
+
+func _load_settings() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_PATH) == OK:
+		for k in settings.keys():
+			settings[k] = cf.get_value("options", k, settings[k])
+
+
+func _save_settings() -> void:
+	var cf := ConfigFile.new()
+	for k in settings.keys():
+		cf.set_value("options", k, settings[k])
+	cf.save(SETTINGS_PATH)
+
+
+func _build_audio() -> void:
+	for sname in SOUNDS:
+		var path := "res://audio/%s.wav" % sname
+		if ResourceLoader.exists(path):
+			sounds[sname] = load(path)
+	for _i in 6:
+		var pl := AudioStreamPlayer.new()
+		add_child(pl)
+		sfx.append(pl)
+
+
+func _play(sname: String) -> void:
+	if not settings["sound"] or not sounds.has(sname):
+		return
+	var pl: AudioStreamPlayer = sfx[sfx_i]
+	sfx_i = (sfx_i + 1) % sfx.size()
+	pl.stream = sounds[sname]
+	pl.volume_db = -8.0 if sname == "step" else 0.0
+	pl.play()
+
+
+func _buzz(sname: String) -> void:
+	if not settings["haptics"] or not HAPTICS.has(sname) or not OS.has_feature("mobile"):
+		return
+	Input.vibrate_handheld(HAPTICS[sname])
+
+
+## Plays the sounds/haptics the last action produced (at most 3 sounds at once).
+func _play_events() -> void:
+	if game == null:
+		return
+	var ev: Array = game.events.duplicate()
+	game.events.clear()
+	if ev.has("death"):
+		ev.erase("hurt")
+	if ev.has("victory"):
+		ev.erase("kill")
+	if ev.size() > 1:
+		ev.erase("step")
+	var played := 0
+	for e in ev:
+		if played < 3:
+			_play(e)
+			played += 1
+		_buzz(e)
+
+
+func _build_settings() -> void:
+	var panel := ColorRect.new()
+	panel.color = Color(0.03, 0.03, 0.05, 0.97)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(panel)
+	settings_panel = panel
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(cc)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 22)
+	v.custom_minimum_size = Vector2(600, 0)
+	cc.add_child(v)
+	var title := _label("SETTINGS", 40, Color("e8c170"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(title)
+	var rows := [
+		["sound", "Sound effects"],
+		["haptics", "Vibration (haptics)"],
+		["tiles", "Tile graphics (off = ASCII)"],
+	]
+	for row in rows:
+		var cb := CheckButton.new()
+		cb.text = row[1]
+		cb.button_pressed = settings[row[0]]
+		cb.custom_minimum_size = Vector2(0, 84)
+		cb.add_theme_font_size_override("font_size", 26)
+		cb.toggled.connect(_on_setting.bind(String(row[0])))
+		v.add_child(cb)
+	var note := _label("Sounds and tiles are original, generated by the scripts in tools/.", 17, Color(0.55, 0.55, 0.6))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(note)
+	var close := Button.new()
+	close.text = "Close"
+	close.custom_minimum_size = Vector2(0, 96)
+	close.pressed.connect(settings_panel.hide)
+	v.add_child(close)
+	panel.hide()
+
+
+func _show_settings() -> void:
+	_stop_travel()
+	settings_panel.show()
+
+
+func _on_setting(pressed: bool, key: String) -> void:
+	settings[key] = pressed
+	_save_settings()
+	match key:
+		"tiles":
+			map_view.use_tiles = pressed
+			map_view.queue_redraw()
+		"sound":
+			if pressed:
+				_play("pickup")
+		"haptics":
+			if pressed:
+				_buzz("crit")

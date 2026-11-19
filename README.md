@@ -23,6 +23,7 @@ Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, 
 | **Rests** | Taking the stairs is a Short Rest (spend Hit Dice). Arriving on floors 5, 9, 13, 17 and 20 gives a Long Rest. |
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
 | **Save / resume** | Autosaves after every action and when Android pauses or closes the app. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
+| **Sound, haptics, tiles** | 15 original sound effects, short vibrations on hits/level-ups/death, and an optional 16×16 pixel **tileset** instead of ASCII. Toggle all three in **Settings** (title screen or in-game); choices are remembered. |
 | **Phone UX** | Tap to move/attack, tap far away to auto-walk (stops when enemies appear), tap yourself to wait or descend. Big buttons. Portrait. In-game **Controls** screen (button, ?/F1, or Android Back) lists every tap, key and map symbol. |
 
 ### Class features implemented
@@ -53,17 +54,23 @@ scripts/game_data.gd   classes, species, monsters, XP table  ← tune balance he
 scripts/dungeon_gen.gd floor generator (layout style per floor band)
 scripts/game.gd        rules, turn loop, monster AI (no UI code)
 scripts/map_view.gd    ASCII renderer + tap input
-scripts/main.gd        title screen, HUD, buttons, end screens
+scripts/main.gd        title screen, HUD, buttons, spell menu, settings, sound + haptics
+audio/*.wav            sound effects (generated)
+art/tiles.png          16x16 tileset atlas (generated); art/tiles_preview.png is a 6x preview
+tools/make_sounds.py   regenerates audio/  (python3 + numpy)
+tools/make_tiles.py    regenerates art/    (python3 + Pillow); edit the pixel grids to redraw tiles
 ```
+To use a different tileset, replace `art/tiles.png` with any 16×16 atlas in the same layout (see the top of `tools/make_tiles.py`).
 Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` floor ranges in `game_data.gd`; monster count formula in `Game._spawn()`.
 
 ## Publishing to Google Play (checklist)
 1. **Android export setup** in Godot: Editor → Editor Settings → Export → Android: set the Java SDK (JDK 17) and Android SDK paths. Project → Install Android Build Template.
 2. Project → Export → Add **Android** preset. Enable **Use Gradle Build**, set **Export Format = AAB** (Play requires App Bundles), set a unique package name (e.g. `com.yourname.hollowking`), version code/name.
 3. **Target SDK must be 36 (Android 16)** for new apps — check the preset's Target SDK field and raise it if your Godot version defaults lower.
-4. Create an upload keystore (`keytool -genkey ...`), set it in the preset's Release keystore fields. Keep it out of git (`.gitignore` already blocks `*.keystore`).
-5. Play Console: one-time developer registration fee. **New personal accounts must run a closed test with at least 12 testers opted in for 14 continuous days** before applying for production. Organization accounts are exempt.
-6. Store listing needs: icon 512×512, feature graphic 1024×500, phone screenshots, privacy policy URL (even if you collect nothing), content rating questionnaire, Data safety form.
+4. Under **Permissions**, tick **Vibrate** (needed for haptics).
+5. Create an upload keystore (`keytool -genkey ...`), set it in the preset's Release keystore fields. Keep it out of git (`.gitignore` already blocks `*.keystore`).
+6. Play Console: one-time developer registration fee. **New personal accounts must run a closed test with at least 12 testers opted in for 14 continuous days** before applying for production. Organization accounts are exempt.
+7. Store listing needs: icon 512×512, feature graphic 1024×500, phone screenshots, privacy policy URL (even if you collect nothing), content rating questionnaire, Data safety form.
 
 ## Legal
 - Rules content is used under CC-BY-4.0 from SRD 5.2.1. The attribution statement is shown on the title screen; also put it in the store description.
@@ -74,4 +81,4 @@ Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` 
 
 ## Suggested next steps
 1. Inventory screen, shops between floors, scrolls/wands.
-2. Sound, haptics, and an optional tileset to replace the ASCII.
+2. Balance pass across all six classes.
