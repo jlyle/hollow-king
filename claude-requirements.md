@@ -54,7 +54,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 
 | ID | Decision | Chosen | Date |
 |---|---|---|---|
-| D-01 | Engine | Godot 4.5+ (GDScript), GL Compatibility renderer | 2026-11-18 |
+| D-01 | Engine | Godot 4.7+ (GDScript), GL Compatibility renderer (was 4.5+; Jim's machine runs 4.7.1) | 2026-11-19 |
 | D-02 | Combat style | Turn-based on a grid | 2026-11-18 |
 | D-03 | Party | Single hero | 2026-11-18 |
 | D-04 | Visual style | Minimal / ASCII | 2026-11-18 |
@@ -243,3 +243,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | R-19: pause menu (Resume / Controls / Settings / Save & return / Save & quit), Quit on title, Esc/Back open the menu. |
 | 2026-11-19 | B-09 started: export presets, launcher/store icons, `tools/android.sh`, `ANDROID.md`; D-12, D-13, C-10, C-11 added. |
 | 2026-11-19 | D-13: enabled ETC2/ASTC texture import in `project.godot` (required by Godot for Android export). |
+| 2026-11-19 | D-01: project marked for Godot 4.7 (`config/features`), matching Jim's editor so it stops rewriting `project.godot`. |
