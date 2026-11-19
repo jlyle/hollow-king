@@ -114,7 +114,7 @@ const SECTIONS = [
     ["ST-17", "R-02", "both", "Tap a distant explored floor square with no enemies in view.", "Hero auto-walks there and stops if an enemy comes into view."],
     ["ST-18", "R-02", "both", "Tap yourself (not on stairs) / press Space.", "One turn passes (Wait)."],
     ["ST-19", "R-08", "desktop", "Use arrows, WASD, HJKL, YUBN and numpad.", "All move the hero in the right directions."],
-    ["ST-20", "R-08", "android", "Press the phone's Back button during a run.", "Controls screen opens (game doesn't quit). Back again closes it."],
+    ["ST-20", "R-19", "android", "Press the phone's Back button during a run.", "Pause menu opens (game doesn't quit). Back again resumes."],
   ]},
   { title: "5. Combat & classes", intro: "Use the log at the top to confirm rolls. Start a separate run for each class.", items: [
     ["ST-21", "R-04", "both", "Walk into a monster (any class).", "Log shows hit/miss and damage; monster health bar appears when wounded; kills grant XP."],
@@ -146,7 +146,12 @@ const SECTIONS = [
     ["ST-43", "R-02", "both", "Let the hero die.", "YOU DIED screen shows cause, floor, level, kills, gold, seed. New Run returns to title."],
     ["ST-44", "R-09", "both", "After dying, look at the title screen.", "No Continue button (save deleted: permadeath)."],
   ]},
-  { title: "8. Save & resume", items: [
+  { title: "8. Save & resume, pause, quit", items: [
+    ["ST-59", "R-19", "both", "During a run, tap Menu (or press Esc).", "PAUSED screen with Resume, Controls, Settings, Save & return to title, Save & quit. Nothing moves while it is open."],
+    ["ST-60", "R-19", "both", "From the menu open Controls, close it; open Settings, close it; tap Resume.", "Each closes back to the menu; Resume returns to the same turn."],
+    ["ST-61", "R-19", "both", "Menu → Save & return to title.", "Title screen shows gold Continue; Continue restores the run."],
+    ["ST-62", "R-19", "both", "Menu → Save & quit, then relaunch.", "Game closes; on relaunch Continue restores the run."],
+    ["ST-63", "R-19", "desktop", "On the title screen tap Quit (or press Esc with nothing open).", "Game closes."],
     ["ST-45", "R-09", "desktop", "Mid-run, close the game window and relaunch.", "Continue shows Floor/Lv/Class; tapping it restores the same map, HP and log."],
     ["ST-46", "R-09", "android", "Mid-run, swipe the app away from Recents, reopen.", "Continue restores the run."],
     ["ST-47", "R-09", "both", "Take a risky swing, quit before seeing the result, resume and repeat the same action.", "Same outcome both times (no save-scumming)."],

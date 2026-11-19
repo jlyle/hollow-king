@@ -25,8 +25,9 @@ const CONTROLS := [
 	["E", "Ranged attack: Fire Bolt / Sacred Flame / Longbow"],
 	["R", "Spells menu (casters) / Reckless toggle (Barbarian)"],
 	["?  or  F1", "Open / close this screen"],
-	["Settings button", "Sound, haptics, ASCII or Tiles display"],
-	["Esc", "Close this screen"],
+	["Settings", "Sound, haptics, ASCII or Tiles (title screen or pause menu)"],
+	["Esc", "Close a screen. During a run: pause menu. On the title: quit"],
+	["Menu button / Back", "Pause menu: Resume, Controls, Settings, Save & return, Save & quit"],
 	["MAP SYMBOLS", ""],
 	["@", "You (faded = hidden)"],
 	[">", "Stairs down (red = sealed by a mini-boss)"],
@@ -86,12 +87,14 @@ var btn_help: Button
 var controls_panel: Control
 var travel_timer: Timer
 var credits_panel: Control
+var pause_panel: Control
+var pause_info: Label
+var btn_menu: Button
 var card_title: Label
 var card_meta: Label
 var card_tag: Label
 var card_desc: Label
 var card_species: RichTextLabel
-var btn_settings: Button
 var settings_panel: Control
 
 # --- Settings, sound and haptics (R-14 .. R-17) ---
@@ -116,6 +119,7 @@ func _ready() -> void:
 	_load_settings()
 	_build_audio()
 	_build_spells()
+	_build_pause()
 	_build_controls()
 	_build_settings()
 	_build_credits()
@@ -283,7 +287,7 @@ func _build_title() -> void:
 	links.add_theme_constant_override("separation", 6)
 	col.add_child(links)
 	var first := true
-	for pair in [["Controls", _show_controls], ["Settings", _show_settings], ["Credits", _show_credits]]:
+	for pair in [["Controls", _show_controls], ["Settings", _show_settings], ["Credits", _show_credits], ["Quit", _quit_game]]:
 		if not first:
 			links.add_child(_label("·", 18, c_line.lightened(0.3)))
 		first = false
@@ -327,7 +331,7 @@ func _build_game() -> void:
 	btn_spells = _action_button(grid, "Spells", _on_spells)
 	btn_descend = _action_button(grid, "Descend >", _on_descend)
 	btn_help = _action_button(grid, "Controls ?", _show_controls)
-	btn_settings = _action_button(grid, "Settings", _show_settings)
+	btn_menu = _action_button(grid, "Menu", _show_pause)
 
 
 func _build_overlay() -> void:
@@ -440,10 +444,12 @@ func _notification(what: int) -> void:
 			settings_panel.hide()
 		elif credits_panel and credits_panel.visible:
 			credits_panel.hide()
+		elif pause_panel and pause_panel.visible:
+			pause_panel.hide()  # Back again = Resume
 		elif game_screen and game_screen.visible and not (game and game.over):
-			_show_controls()  # back button = pause screen, not an accidental quit
+			_show_pause()  # R-19: Back opens the pause menu, not an accidental quit
 		else:
-			get_tree().quit()
+			_quit_game()
 
 
 # --- Screens -----------------------------------------------------------------------
@@ -655,6 +661,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	if spells_panel.visible:
 		if key.keycode in [KEY_ESCAPE, KEY_R]:
 			_hide_spells()
+		get_viewport().set_input_as_handled()
+		return
+	if pause_panel.visible:
+		if key.keycode == KEY_ESCAPE:
+			pause_panel.hide()
+		get_viewport().set_input_as_handled()
+		return
+	if key.keycode == KEY_ESCAPE:
+		if title_screen.visible:
+			_quit_game()
+		elif game_screen.visible and game != null and not game.over:
+			_show_pause()
 		get_viewport().set_input_as_handled()
 		return
 	if game == null or game.over or not game_screen.visible:
@@ -1098,3 +1116,72 @@ func _build_credits() -> void:
 
 func _show_credits() -> void:
 	credits_panel.show()
+
+
+# --- Pause menu and quitting (R-19) -------------------------------------------------------
+
+func _build_pause() -> void:
+	var panel := ColorRect.new()
+	panel.color = Color(c_bg, 0.94)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(panel)
+	pause_panel = panel
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(cc)
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(520, 0)
+	v.add_theme_constant_override("separation", 12)
+	cc.add_child(v)
+	var title := _label("PAUSED", 38, c_gold)
+	title.add_theme_font_override("font", _spaced(8))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(title)
+	v.add_child(_ornament())
+	pause_info = _label("", 17, c_muted)
+	pause_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(pause_info)
+	v.add_child(_spacer(14))
+	var resume := _menu_button(v, "Resume", pause_panel.hide)
+	_style_primary(resume, true)
+	_menu_button(v, "Controls", _show_controls)
+	_menu_button(v, "Settings", _show_settings)
+	v.add_child(_spacer(10))
+	_menu_button(v, "Save & return to title", _save_and_title)
+	_menu_button(v, "Save & quit", _quit_game)
+	panel.hide()
+
+
+func _menu_button(parent: Control, text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(0, 72)
+	b.add_theme_font_size_override("font_size", 23)
+	b.pressed.connect(cb)
+	parent.add_child(b)
+	return b
+
+
+func _show_pause() -> void:
+	if game == null or game.over:
+		return
+	_stop_travel()
+	_hide_spells()
+	var hd: Dictionary = game.hero
+	pause_info.text = "Floor %d  ·  Level %d %s %s  ·  HP %d/%d" % [game.floor_num, hd["level"], hd["species"], hd["cls"], hd["hp"], hd["hp_max"]]
+	pause_panel.show()
+
+
+func _save_and_title() -> void:
+	if game != null and not game.over:
+		game.save_run()
+	pause_panel.hide()
+	_show_title()
+
+
+## Saves any run in progress, then closes the app.
+func _quit_game() -> void:
+	if game != null and not game.over and game_screen.visible:
+		game.save_run()
+	get_tree().quit()

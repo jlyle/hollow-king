@@ -46,6 +46,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | R-16 | Optional tileset as an alternative to ASCII | Done | Original 16×16 pixel tileset; switch in Settings. From B-07. See 5.8. |
 | R-17 | Settings screen, remembered between sessions | Done | Sound, haptics, display mode (ASCII / Tiles). |
 | R-18 | Clean, readable, attractive title screen | Done | Single centred column, clear selection state, class card with tagline, one primary button, legal text under Credits. See 5.9. |
+| R-19 | Pause menu and a way to quit | Done | In-game **Menu**: Resume, Controls, Settings, Save & return to title, Save & quit. Title screen has **Quit**. Esc / Android Back open the menu during a run. |
 
 ---
 
@@ -185,6 +186,8 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - **Title screen**, top to bottom: title, tagline, CLASS chips (3×2), SPECIES chips, class card (name, role line, one-line tagline, details, species line), primary button (**Begin Descent**, or **Continue** when a save exists, with New Run below it), small links (Controls · Settings · Credits), one-line SRD note.
 - **Selected chips** get a gold border and gold text. Content is a fixed-width centred column (620 px), so the layout looks the same on phones and on a wide desktop window.
 - **Desktop test window** opens at 540×960 (phone shape); Android is unaffected.
+- **Pause menu (R-19):** opened by the in-game **Menu** button, Esc or Android Back. Resume (gold primary), Controls, Settings, Save & return to title, Save & quit. Settings moves into this menu; the in-game button row is Wait, Potion, Ability, Ranged / Spells, Descend, Controls, Menu.
+- **Quitting:** title screen links are Controls · Settings · Credits · Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
 ---
 
 ## 6. Constraints (Google Play and legal)
@@ -233,3 +236,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | B-06/B-07 built as R-14 to R-17: sounds, haptics, original tileset, Settings screen; D-09, C-09 added. |
 | 2026-11-19 | D-10: added `testing.html` smoke test checklist (56 steps). |
 | 2026-11-19 | R-18, D-11: title screen redesign; C-04 updated (attribution moved to a Credits screen); desktop window phone-shaped. |
+| 2026-11-19 | R-19: pause menu (Resume / Controls / Settings / Save & return / Save & quit), Quit on title, Esc/Back open the menu. |

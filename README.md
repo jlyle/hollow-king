@@ -8,7 +8,7 @@ A turn-based ASCII roguelike for Android, built in **Godot 4.5+**. You control o
 2. Project Manager → **Import** → pick this folder's `project.godot`.
 3. Press **F5**. The window is phone-shaped (720×1280, portrait). The mouse works like a finger.
 
-Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E ranged attack, R spells (or Reckless), ? or F1 opens the Controls screen.
+Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E ranged attack, R spells (or Reckless), ? or F1 opens the Controls screen, Esc opens the pause menu (on the title screen Esc quits).
 
 ## What's in the starter
 
