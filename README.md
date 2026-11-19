@@ -8,7 +8,7 @@ A turn-based ASCII roguelike for Android, built in **Godot 4.5+**. You control o
 2. Project Manager → **Import** → pick this folder's `project.godot`.
 3. Press **F5**. The window is phone-shaped (720×1280, portrait). The mouse works like a finger.
 
-Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E ranged attack, R spells (or Reckless), ? or F1 opens the Controls screen, Esc opens the pause menu (on the title screen Esc quits).
+Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E ranged attack, R spells (or Reckless), X explore, ? or F1 opens the Controls screen, Esc opens the pause menu (on the title screen Esc quits).
 
 ## What's in the starter
 
@@ -24,7 +24,7 @@ Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, 
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
 | **Save / resume** | Autosaves after every action and when Android pauses or closes the app. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
 | **Sound, haptics, tiles** | 15 original sound effects, short vibrations on hits/level-ups/death, and an optional 16×16 pixel **tileset** instead of ASCII. Toggle all three in **Settings** (title screen or in-game); choices are remembered. |
-| **Phone UX** | Tap to move/attack, tap far away to auto-walk (stops when enemies appear), tap yourself to wait or descend. Big buttons. Portrait. In-game **Controls** screen (button, ?/F1, or Android Back) lists every tap, key and map symbol. |
+| **Phone UX** | On-screen **D-pad** (hold to keep walking), **swipe** the map to step, **long-press** to inspect, **Explore** button auto-walks to unexplored areas, map zoom (Small/Medium/Large). Tap to move/attack, tap far away to auto-walk. Portrait. In-game **Controls** screen (button, ?/F1, or Android Back) lists every tap, key and map symbol. |
 
 ### Class features implemented
 - **Fighter**: Defense style (AC 19), Second Wind (bonus action, 2/3/4 uses), Extra Attack at 5, 11, 20.

@@ -47,6 +47,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | R-17 | Settings screen, remembered between sessions | Done | Sound, haptics, display mode (ASCII / Tiles). |
 | R-18 | Clean, readable, attractive title screen | Done | Single centred column, clear selection state, class card with tagline, one primary button, legal text under Credits. See 5.9. |
 | R-19 | Pause menu and a way to quit | Done | In-game **Menu**: Resume, Controls, Settings, Save & return to title, Save & quit. Title screen has **Quit**. Esc / Android Back open the menu during a run. |
+| R-20 | Easy to play on a phone without a keyboard | Done | On-screen D-pad (hold to repeat), swipe to move, long-press to inspect, **Explore** auto-walk, map zoom setting, touch-first Controls screen. See 5.10. |
 
 ---
 
@@ -188,8 +189,17 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - **Title screen**, top to bottom: title, tagline, CLASS chips (3×2), SPECIES chips, class card (name, role line, one-line tagline, details, species line), primary button (**Begin Descent**, or **Continue** when a save exists, with New Run below it), small links (Controls · Settings · Credits), one-line SRD note.
 - **Selected chips** get a gold border and gold text. Content is a fixed-width centred column (620 px), so the layout looks the same on phones and on a wide desktop window.
 - **Desktop test window** opens at 540×960 (phone shape); Android is unaffected.
-- **Pause menu (R-19):** opened by the in-game **Menu** button, Esc or Android Back. Resume (gold primary), Controls, Settings, Save & return to title, Save & quit. Settings moves into this menu; the in-game button row is Wait, Potion, Ability, Ranged / Spells, Descend, Controls, Menu.
+- **Pause menu (R-19):** opened by the in-game **Menu** button, Esc or Android Back. Resume (gold primary), Controls, Settings, Save & return to title, Save & quit. Settings moves into this menu; the in-game controls are described in 5.10.
 - **Quitting:** title screen links are Controls · Settings · Credits · Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
+
+### 5.10 Touch controls (R-20)
+- **Game screen layout:** status (3 lines), message log (4–5 lines), map, then the control area: **D-pad** on the left (3×3: 8 directions, **Wait** in the centre), action buttons on the right (Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Controls, Menu; buttons a class doesn't use are hidden).
+- **D-pad:** tap = one step or attack in that direction; **hold** = keep walking (stops when hurt or when a new enemy comes into view).
+- **Map gestures:** tap a neighbouring square to move/attack; tap a distant square to auto-walk; tap an enemy to select it (casters/Ranger also attack); **swipe** to step in one of 8 directions; **long-press** to inspect a square (monster stats, item, terrain).
+- **Explore:** auto-walks to the nearest unexplored area or visible item; stops when an enemy appears or you're hurt. When nothing is left, it walks to the stairs.
+- **Map zoom** (Settings): Small 19 / Medium 15 / Large 11 squares across. Default Medium.
+- **Settings:** "On-screen D-pad" switch (default on). With it off, the action buttons use the full width.
+- **Controls screen on phones** shows touch controls first and hides the keyboard section.
 ---
 
 ## 6. Constraints (Google Play and legal)
@@ -244,3 +254,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | B-09 started: export presets, launcher/store icons, `tools/android.sh`, `ANDROID.md`; D-12, D-13, C-10, C-11 added. |
 | 2026-11-19 | D-13: enabled ETC2/ASTC texture import in `project.godot` (required by Godot for Android export). |
 | 2026-11-19 | D-01: project marked for Godot 4.7 (`config/features`), matching Jim's editor so it stops rewriting `project.godot`. |
+| 2026-11-19 | R-20: touch-first controls (D-pad, swipe, long-press inspect, Explore, map zoom, phone Controls screen). |

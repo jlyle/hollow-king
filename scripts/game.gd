@@ -417,6 +417,99 @@ func describe(m: Dictionary) -> void:
 	say("%s - AC %d, %s%s." % [m["name"], m["ac"], _health_word(m), tags])
 
 
+func visible_count() -> int:
+	return _visible_monsters_by_distance().size()
+
+
+## R-20: long-press inspect. Describes whatever is on the square.
+func inspect(p: Vector2i) -> void:
+	if not _in_bounds(p) or explored[p.y * w + p.x] == 0:
+		say("You haven't seen that spot yet.")
+		return
+	var m = visible_monster_at(p)
+	if m != null:
+		target = m
+		var role := ""
+		if m.get("boss", false) or m.get("mini", false):
+			role = "Boss. "
+		elif m.has("spells"):
+			role = "Spellcaster. "
+		elif m.has("ranged"):
+			role = "Archer. "
+		describe(m)
+		var atk: Array = m["dmg"]
+		say("  %s%d attack(s) at +%d for %dd%d+%d." % [role, m["attacks"], m["atk"], atk[0], atk[1], atk[2]])
+		return
+	if p == hero["pos"]:
+		say("That's you: %d/%d HP, AC %d." % [hero["hp"], hero["hp_max"], hero_ac()])
+		return
+	if items.has(p):
+		var names := {"potion": "Potion of Healing", "greater": "Potion of Greater Healing", "gold": "Gold",
+			"weapon": "Better weapon", "armor": "Better armor"}
+		say("%s. Walk over it to pick it up." % names.get(items[p], "An item"))
+		return
+	if p == stairs:
+		say("Stairs down%s." % (" - sealed by a guardian" if stairs_sealed() else ""))
+		return
+	match tiles[p.y * w + p.x]:
+		DungeonGen.WALL:
+			say("Solid wall.")
+		DungeonGen.WATER:
+			say("Shallow water. You can wade through it.")
+		DungeonGen.LAVA:
+			say("Lava. Impassable.")
+		_:
+			say("Bare floor.")
+
+
+## R-20: Explore. Plans a walk to the nearest unexplored area or visible item.
+## Returns a message for the log ("" if a path was planned silently).
+func plan_explore() -> String:
+	travel.clear()
+	if any_monster_visible():
+		return "Not while enemies are in sight."
+	var start: Vector2i = hero["pos"]
+	var seen := {start: true}
+	var queue: Array = [start]
+	var head := 0
+	var goal := Vector2i(-1, -1)
+	while head < queue.size():
+		var c: Vector2i = queue[head]
+		head += 1
+		if c != start and (items.has(c) or _is_frontier(c)):
+			goal = c
+			break
+		for d in DungeonGen.DIRS:
+			var n: Vector2i = c + d
+			if seen.has(n) or not _in_bounds(n) or explored[n.y * w + n.x] == 0 or not _can_step(c, d):
+				continue
+			seen[n] = true
+			queue.append(n)
+	if goal.x < 0:
+		if stairs.x < 0 or explored[stairs.y * w + stairs.x] == 0:
+			return "Nothing left to explore here."
+		if stairs_sealed():
+			return "Floor explored. Defeat the %s to unseal the stairs." % _guardian_name()
+		if start == stairs:
+			return "Floor explored. Tap Descend."
+		goal = stairs
+		plan_travel(goal)
+		return "Floor explored. Heading for the stairs."
+	plan_travel(goal)
+	return ""
+
+
+## An explored, walkable square next to one we haven't seen yet.
+func _is_frontier(p: Vector2i) -> bool:
+	if not _walkable(p):
+		return false
+	for d in DungeonGen.DIRS:
+		var n: Vector2i = p + d
+		if _in_bounds(n) and explored[n.y * w + n.x] == 0:
+			return true
+	return false
+
+
 func set_target(m) -> void:
 	target = m
 

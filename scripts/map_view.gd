@@ -2,8 +2,16 @@ extends Control
 ## Draws the dungeon centred on the hero, as ASCII glyphs or as tiles (R-16), and turns taps into grid cells.
 
 signal cell_tapped(cell: Vector2i)
+signal swiped(dir: Vector2i)          ## R-20: swipe = one step in 8 directions
+signal long_pressed(cell: Vector2i)   ## R-20: long-press = inspect
 
-const COLS := 19   ## Squares shown across the screen. Lower = bigger glyphs.
+const ZOOM_COLS := [19, 15, 11]       ## Settings map zoom: Small / Medium / Large
+const LONG_PRESS_MS := 450
+
+var cols := 15                         ## Squares shown across the screen. Lower = bigger squares.
+var _pressing := false
+var _press_pos := Vector2.ZERO
+var _press_ms := 0
 
 const ITEM_GLYPHS := {
 	"potion": ["!", "ff6b8a"],
@@ -60,15 +68,15 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.02, 0.035))
 	if game == null or game.tiles.is_empty():
 		return
-	cell = floorf(size.x / COLS)
+	cell = floorf(size.x / cols)
 	if cell < 4.0:
 		return
 	var tiles_mode := use_tiles and atlas != null
 	var rows := int(size.y / cell)
-	offset = Vector2((size.x - COLS * cell) / 2.0, (size.y - rows * cell) / 2.0)
+	offset = Vector2((size.x - cols * cell) / 2.0, (size.y - rows * cell) / 2.0)
 	var hp: Vector2i = game.hero["pos"]
 	origin = Vector2i(
-		clampi(hp.x - COLS / 2, 0, maxi(0, game.w - COLS)),
+		clampi(hp.x - cols / 2, 0, maxi(0, game.w - cols)),
 		clampi(hp.y - rows / 2, 0, maxi(0, game.h - rows)))
 
 	var fs := int(cell * 0.8)
@@ -86,7 +94,7 @@ func _draw() -> void:
 			mons[m["pos"]] = m
 
 	for vy in rows:
-		for vx in COLS:
+		for vx in cols:
 			var p := origin + Vector2i(vx, vy)
 			if p.x >= game.w or p.y >= game.h:
 				continue
@@ -190,12 +198,34 @@ func _draw_tile_cell(p: Vector2i, cell_pos: Vector2, terrain: int, mon: Dictiona
 		_tile("hero", cell_pos, Color(1, 1, 1, 0.45 if game.hero["hidden"] else 1.0))
 
 
+func _cell_at(pos: Vector2) -> Vector2i:
+	var local := pos - offset
+	return Vector2i(int(floorf(local.x / cell)), int(floorf(local.y / cell))) + origin
+
+
+## Tap, swipe or long-press. Decided when the finger lifts.
 func _gui_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
-	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-		var local: Vector2 = mb.position - offset
-		if local.x < 0.0 or local.y < 0.0:
-			return
-		var c := Vector2i(int(local.x / cell), int(local.y / cell)) + origin
-		cell_tapped.emit(c)
+	if mb == null or mb.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if mb.pressed:
+		_pressing = true
+		_press_pos = mb.position
+		_press_ms = Time.get_ticks_msec()
 		accept_event()
+		return
+	if not _pressing:
+		return
+	_pressing = false
+	accept_event()
+	var delta := mb.position - _press_pos
+	if delta.length() >= maxf(28.0, cell * 0.6):
+		# 8-way direction from the swipe angle (0 = right, screen y points down).
+		var octant := posmod(int(roundf(delta.angle() / (PI / 4.0))), 8)
+		var dirs := [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1),
+			Vector2i(-1, 0), Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1)]
+		swiped.emit(dirs[octant])
+	elif Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
+		long_pressed.emit(_cell_at(_press_pos))
+	elif _press_pos.x >= offset.x and _press_pos.y >= offset.y:
+		cell_tapped.emit(_cell_at(_press_pos))
