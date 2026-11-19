@@ -57,6 +57,7 @@ scripts/map_view.gd    ASCII renderer + tap input
 scripts/main.gd        title screen, HUD, buttons, spell menu, settings, sound + haptics
 audio/*.wav            sound effects (generated)
 art/tiles.png          16x16 tileset atlas (generated); art/tiles_preview.png is a 6x preview
+testing.html           smoke-test checklist (open in any browser)
 tools/make_sounds.py   regenerates audio/  (python3 + numpy)
 tools/make_tiles.py    regenerates art/    (python3 + Pillow); edit the pixel grids to redraw tiles
 ```

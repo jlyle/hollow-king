@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hollow King – Smoke Test Checklist</title>
+<style>
+  :root {
+    --bg: #0b0b12; --panel: #15151f; --line: #2a2a3a; --text: #e9e6dc; --muted: #9a98a6;
+    --gold: #e8c170; --pass: #4fbf6a; --fail: #e05858; --skip: #8a8aa0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: 14px 16px 12px; }
+  h1 { margin: 0 0 4px; font-size: 20px; color: var(--gold); letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 8px; display: flex; }
+  .bar span { display: block; height: 100%; }
+  .counts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .counts b { color: var(--text); }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  button, select, input[type=text] { font: inherit; font-size: 14px; color: var(--text); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--gold); }
+  main { padding: 8px 16px 60px; max-width: 920px; margin: 0 auto; }
+  section { margin-top: 22px; }
+  h2 { font-size: 16px; margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  h2 .sc { font-size: 12px; color: var(--muted); font-weight: normal; }
+  .intro { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+  .item { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .item.pass { border-left-color: var(--pass); }
+  .item.fail { border-left-color: var(--fail); }
+  .item.skip { border-left-color: var(--skip); opacity: .75; }
+  .row { display: flex; gap: 10px; align-items: flex-start; }
+  .txt { flex: 1; min-width: 0; }
+  .id { font: 12px ui-monospace, Menlo, Consolas, monospace; color: var(--gold); }
+  .req { font: 11px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+  .plat { font-size: 11px; color: #7fc2ff; margin-left: 4px; }
+  .step { margin: 2px 0; }
+  .exp { color: var(--muted); font-size: 14px; }
+  .exp::before { content: "Expect: "; color: #c8c4b4; }
+  .states { display: flex; gap: 4px; flex-shrink: 0; }
+  .states button { padding: 5px 9px; font-size: 13px; }
+  .states button.on.p { background: var(--pass); border-color: var(--pass); color: #08130b; }
+  .states button.on.f { background: var(--fail); border-color: var(--fail); color: #170707; }
+  .states button.on.s { background: var(--skip); border-color: var(--skip); color: #0d0d12; }
+  .note { width: 100%; margin-top: 8px; display: none; }
+  .item.fail .note, .item.has-note .note { display: block; }
+  .tip { background: #1b1a12; border: 1px solid #3a3420; color: #e6dcb8; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #ffd75e; }
+  @media (max-width: 560px) { header { position: static; } .row { flex-direction: column; } .states { align-self: flex-end; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Depths of the Hollow King – Smoke Test</h1>
+  <div class="sub">Build/commit: <input type="text" id="build" placeholder="e.g. 06b0099 or v0.1" size="16">
+    &nbsp;Tester: <input type="text" id="tester" placeholder="name" size="10"></div>
+  <div class="bar" id="bar"></div>
+  <div class="counts" id="counts"></div>
+  <div class="toolbar">
+    <select id="filter">
+      <option value="all">All steps</option>
+      <option value="open">Not yet tested</option>
+      <option value="fail">Failures only</option>
+      <option value="desktop">Desktop steps</option>
+      <option value="android">Android steps</option>
+    </select>
+    <button id="copy">Copy results</button>
+    <button id="reset">Reset all</button>
+  </div>
+</header>
+
+<main>
+  <p class="tip">Run on <b>desktop</b> first (Godot, F5), then on an <b>Android phone</b>. Mark each step Pass / Fail / Skip.
+    Results are saved in this browser. When done, tap <b>Copy results</b> and paste them to Claude. Failures with notes get fixed first.
+    Requirement IDs (R-xx) match <code>claude-requirements.md</code>.</p>
+  <div id="list"></div>
+</main>
+
+<script>
+// Each step: [id, requirement, platform ("both" | "desktop" | "android"), step, expected]
+const SECTIONS = [
+  { title: "1. Launch & title screen", intro: "Open the project in Godot 4.5+ and press F5, or install the APK on a phone.", items: [
+    ["ST-01", "R-01", "both", "Launch the game.", "Title screen appears with no errors in Godot's Output panel. Portrait layout."],
+    ["ST-02", "R-10", "both", "Look at the Class buttons.", "Six classes in a 3×2 grid: Fighter, Rogue, Barbarian, Ranger, Wizard, Cleric."],
+    ["ST-03", "R-04", "both", "Tap each class, then each species (Human, Dwarf, Halfling, Orc).", "Description text updates for each choice. Exactly one class and one species stay selected."],
+    ["ST-04", "C-04", "both", "Scroll to the bottom of the title screen.", "SRD 5.2.1 CC-BY-4.0 attribution text and \"5E compatible\" are visible."],
+    ["ST-05", "R-09", "both", "Check the start buttons with no saved run.", "Only \"Descend\" shows; no Continue button."],
+  ]},
+  { title: "2. Controls & Settings screens", items: [
+    ["ST-06", "R-08", "both", "Tap Controls on the title screen.", "Controls screen lists Touch, Keyboard, Map Symbols, Class Buttons and Rules. It scrolls."],
+    ["ST-07", "R-08", "desktop", "Press ? or F1 to open; press Esc to close.", "Screen toggles open/closed with the keys."],
+    ["ST-08", "R-17", "both", "Tap Settings on the title screen.", "Three switches: Sound effects, Vibration (haptics), Tile graphics. Defaults: on, on, off."],
+    ["ST-09", "R-14", "both", "Turn Sound off then on.", "A short chime plays when switched on."],
+    ["ST-10", "R-17", "both", "Change a setting, quit the game completely, relaunch, open Settings.", "The changed setting was remembered."],
+  ]},
+  { title: "3. New run & dungeon generation", items: [
+    ["ST-11", "R-03", "both", "Start a run (Descend). Note the first room layout.", "Floor 1 \"Sunken Cellars\" loads; status bar shows Floor 1/20, class, Lv 1, HP, AC, XP, Gold."],
+    ["ST-12", "R-03", "both", "Die or start another New Run with the same class.", "Floor 1 layout is different from the previous run."],
+    ["ST-13", "R-03", "both", "Walk around.", "Unexplored areas are black; seen areas stay visible but dimmed when out of sight (fog of war)."],
+    ["ST-14", "R-05", "both", "Descend through floors (this takes a while by hand).", "Floor themes change at 5 (Warrens), 9 (Flooded Caverns, water), 13 (Crypts, pillars), 17 (Infernal Forge, lava), 20 (Throne)."],
+  ]},
+  { title: "4. Movement & input", items: [
+    ["ST-15", "R-02", "both", "Tap each neighbouring square, including diagonals.", "Hero moves one square per tap; monsters act after each move."],
+    ["ST-16", "R-02", "both", "Tap a diagonal blocked by two wall corners.", "Hero does not squeeze through."],
+    ["ST-17", "R-02", "both", "Tap a distant explored floor square with no enemies in view.", "Hero auto-walks there and stops if an enemy comes into view."],
+    ["ST-18", "R-02", "both", "Tap yourself (not on stairs) / press Space.", "One turn passes (Wait)."],
+    ["ST-19", "R-08", "desktop", "Use arrows, WASD, HJKL, YUBN and numpad.", "All move the hero in the right directions."],
+    ["ST-20", "R-08", "android", "Press the phone's Back button during a run.", "Controls screen opens (game doesn't quit). Back again closes it."],
+  ]},
+  { title: "5. Combat & classes", intro: "Use the log at the top to confirm rolls. Start a separate run for each class.", items: [
+    ["ST-21", "R-04", "both", "Walk into a monster (any class).", "Log shows hit/miss and damage; monster health bar appears when wounded; kills grant XP."],
+    ["ST-22", "R-04", "both", "Tap a distant visible monster.", "Yellow target frame appears around it."],
+    ["ST-23", "R-10", "both", "Fighter: tap 2nd Wind when hurt.", "HP rises; button count drops; usable once per turn (Bonus Action)."],
+    ["ST-24", "R-10", "both", "Rogue: tap Hide with no enemy adjacent, then attack.", "\"Hidden\" shows; next attack has Sneak Attack in the log."],
+    ["ST-25", "R-10", "both", "Barbarian: tap Rage, then get hit.", "\"RAGING\" in status; log says Rage halves the damage."],
+    ["ST-26", "R-10", "both", "Barbarian level 2+: toggle Reckless.", "Status shows Reckless; button reads Reckless ON/off."],
+    ["ST-27", "R-10", "both", "Ranger: tap a distant enemy / Longbow button.", "Longbow attack in the log. Mark button applies Hunter's Mark (+Mark on hits)."],
+    ["ST-28", "R-11", "both", "Wizard: Fire Bolt a distant enemy, then open Spells.", "Fire Bolt resolves; Spells menu lists all Wizard spells with costs and greyed-out reasons."],
+    ["ST-29", "R-11", "both", "Wizard: cast Burning Hands on a group within 3 squares.", "Log shows each monster's save (saves/fails) and DC; half damage on saves."],
+    ["ST-30", "R-11", "both", "Cleric: Sacred Flame an enemy; Healing Word when hurt.", "DEX save in the log; Healing Word heals and does not end your turn."],
+    ["ST-31", "R-11", "both", "Cleric level 2+: Turn Undead near skeletons/zombies.", "Failed undead flee (dimmed); attacking one ends it."],
+    ["ST-32", "R-11", "both", "Cast a Concentration spell, then take damage.", "Status shows Conc: <spell>; sometimes log says concentration breaks."],
+    ["ST-33", "R-04", "both", "Drink a potion (Potion button / Q).", "HP rises; Potion is disabled for the rest of that turn."],
+  ]},
+  { title: "6. Monsters, mini-bosses, boss", items: [
+    ["ST-34", "R-12", "both", "Floors 2–7: find a Goblin Archer or Kobold Shaman.", "It attacks from range (\"shoots\" / \"casts Fire Bolt at\")."],
+    ["ST-35", "R-12", "both", "Floors 4–10: fight a Cult Acolyte.", "It casts Sacred Flame (your DEX save shown) and heals wounded allies."],
+    ["ST-36", "R-12", "both", "Floors 9–15: get hit by a Dark Adept's Sickening Ray and fail.", "Status shows POISONED; your attacks have disadvantage; it wears off."],
+    ["ST-37", "R-13", "both", "Floor 5: step on the stairs while the Goblin Warchief (&) lives.", "Stairs show red; log says the stairs are sealed; Descend refuses."],
+    ["ST-38", "R-13", "both", "Defeat the Warchief.", "Stairs turn normal; Descend works."],
+    ["ST-39", "R-13", "both", "Floor 10 and 15 mini-bosses.", "Drowned Oracle pushes/poisons; Bone Warden summons skeleton archers. Both seal the stairs."],
+    ["ST-40", "R-07", "both", "Floor 20: find the Hollow King (K).", "Boss wakes, raises skeletons. Killing him shows the VICTORY screen."],
+  ]},
+  { title: "7. Rests, levels, death", items: [
+    ["ST-41", "R-04", "both", "Descend any stairs.", "Short Rest message (Hit Dice spent); arriving on 5/9/13/17/20 gives a Long Rest."],
+    ["ST-42", "R-04", "both", "Earn 300 XP.", "Level 2 message, HP increases, sound plays."],
+    ["ST-43", "R-02", "both", "Let the hero die.", "YOU DIED screen shows cause, floor, level, kills, gold, seed. New Run returns to title."],
+    ["ST-44", "R-09", "both", "After dying, look at the title screen.", "No Continue button (save deleted: permadeath)."],
+  ]},
+  { title: "8. Save & resume", items: [
+    ["ST-45", "R-09", "desktop", "Mid-run, close the game window and relaunch.", "Continue shows Floor/Lv/Class; tapping it restores the same map, HP and log."],
+    ["ST-46", "R-09", "android", "Mid-run, swipe the app away from Recents, reopen.", "Continue restores the run."],
+    ["ST-47", "R-09", "both", "Take a risky swing, quit before seeing the result, resume and repeat the same action.", "Same outcome both times (no save-scumming)."],
+    ["ST-48", "R-09", "both", "With a saved run, look at the start button.", "It reads \"New Run (replaces saved run)\"."],
+  ]},
+  { title: "9. Sound, haptics, tiles", items: [
+    ["ST-49", "R-14", "both", "With sound on: move, attack, miss, get hit, kill, pick up gold, level up, descend.", "Each event has a distinct sound; nothing is ear-splitting; footsteps are quiet."],
+    ["ST-50", "R-14", "both", "Turn Sound off and fight.", "Silence."],
+    ["ST-51", "R-15", "android", "With Vibration on: get hit, level up, die.", "Short buzz on hits, longer on level-up, long on death. (Needs Vibrate permission in the export.)"],
+    ["ST-52", "R-16", "both", "Settings → Tile graphics on.", "Map switches to pixel tiles: tinted walls/floors, hero sprite, monster bodies with corner letters, red grate on sealed stairs."],
+    ["ST-53", "R-16", "both", "In Tiles mode: target, wound, ensnare and turn monsters.", "Yellow frame, health bar, green tint (Restrained) and dimming (Turned) still show."],
+  ]},
+  { title: "10. Android build", items: [
+    ["ST-54", "C-01", "android", "Check the export preset before building.", "AAB format, Gradle build on, Target SDK 36, Vibrate permission ticked."],
+    ["ST-55", "R-01", "android", "Install and play 10 minutes on a real phone.", "No crashes; text readable; buttons easy to hit; no part of the UI under the notch/status bar."],
+    ["ST-56", "R-01", "android", "Rotate the phone.", "Game stays in portrait."],
+  ]},
+];
+
+const KEY = "hollowking-smoketest-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+state.items = state.items || {};
+
+const list = document.getElementById("list");
+const filterSel = document.getElementById("filter");
+const build = document.getElementById("build");
+const tester = document.getElementById("tester");
+build.value = state.build || "";
+tester.value = state.tester || "";
+build.oninput = () => { state.build = build.value; save(); };
+tester.oninput = () => { state.tester = tester.value; save(); };
+
+const allItems = SECTIONS.flatMap(s => s.items);
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function render() {
+  const f = filterSel.value;
+  list.innerHTML = "";
+  for (const sec of SECTIONS) {
+    const shown = sec.items.filter(([id, , plat]) => {
+      const st = (state.items[id] || {}).s || "";
+      if (f === "open") return !st;
+      if (f === "fail") return st === "fail";
+      if (f === "desktop") return plat !== "android";
+      if (f === "android") return plat !== "desktop";
+      return true;
+    });
+    if (!shown.length) continue;
+    const done = sec.items.filter(([id]) => (state.items[id] || {}).s).length;
+    const el = document.createElement("section");
+    el.innerHTML = `<h2>${esc(sec.title)} <span class="sc">${done}/${sec.items.length}</span></h2>` +
+      (sec.intro ? `<p class="intro">${esc(sec.intro)}</p>` : "");
+    for (const [id, req, plat, step, exp] of shown) {
+      const it = state.items[id] || {};
+      const div = document.createElement("div");
+      div.className = "item " + (it.s || "") + (it.n ? " has-note" : "");
+      div.innerHTML = `<div class="row"><div class="txt">
+          <span class="id">${id}</span><span class="req">${req}</span>${plat !== "both" ? `<span class="plat">${plat}</span>` : ""}
+          <div class="step">${esc(step)}</div><div class="exp">${esc(exp)}</div></div>
+        <div class="states">
+          <button class="p ${it.s === "pass" ? "on" : ""}" data-s="pass">Pass</button>
+          <button class="f ${it.s === "fail" ? "on" : ""}" data-s="fail">Fail</button>
+          <button class="s ${it.s === "skip" ? "on" : ""}" data-s="skip">Skip</button>
+        </div></div>
+        <input type="text" class="note" placeholder="What happened? (note)" value="${esc(it.n || "")}">`;
+      div.querySelectorAll(".states button").forEach(b => b.onclick = () => {
+        const cur = state.items[id] || {};
+        cur.s = cur.s === b.dataset.s ? "" : b.dataset.s;   // tap again to clear
+        state.items[id] = cur; save(); render();
+      });
+      div.querySelector(".note").oninput = e => {
+        state.items[id] = Object.assign(state.items[id] || {}, { n: e.target.value }); save();
+      };
+      el.appendChild(div);
+    }
+    list.appendChild(el);
+  }
+  updateCounts();
+}
+
+function updateCounts() {
+  const c = { pass: 0, fail: 0, skip: 0 };
+  for (const [id] of allItems) { const s = (state.items[id] || {}).s; if (s) c[s]++; }
+  const total = allItems.length, open = total - c.pass - c.fail - c.skip;
+  document.getElementById("counts").innerHTML =
+    `<span><b>${c.pass}</b> pass</span><span><b>${c.fail}</b> fail</span><span><b>${c.skip}</b> skip</span><span><b>${open}</b> open</span><span>of ${total}</span>`;
+  const pct = n => (100 * n / total) + "%";
+  document.getElementById("bar").innerHTML =
+    `<span style="width:${pct(c.pass)};background:var(--pass)"></span><span style="width:${pct(c.fail)};background:var(--fail)"></span><span style="width:${pct(c.skip)};background:var(--skip)"></span>`;
+}
+
+document.getElementById("copy").onclick = async () => {
+  const lines = [`Hollow King smoke test - build ${state.build || "?"} - tester ${state.tester || "?"} - ${new Date().toLocaleString()}`];
+  const c = { pass: 0, fail: 0, skip: 0, open: 0 };
+  for (const sec of SECTIONS) {
+    lines.push("", sec.title);
+    for (const [id, req, , step] of sec.items) {
+      const it = state.items[id] || {};
+      const s = it.s || "open"; c[s]++;
+      lines.push(`  [${s.toUpperCase()}] ${id} (${req}) ${step}${it.n ? "  -- " + it.n : ""}`);
+    }
+  }
+  lines.splice(1, 0, `Pass ${c.pass}, Fail ${c.fail}, Skip ${c.skip}, Open ${c.open}`);
+  const text = lines.join("\n");
+  try { await navigator.clipboard.writeText(text); alert("Results copied."); }
+  catch (e) { const w = window.open("", "_blank"); if (w) { w.document.write("<pre>" + esc(text) + "</pre>"); } }
+};
+
+document.getElementById("reset").onclick = () => {
+  if (confirm("Clear all results and notes?")) { state = { items: {}, build: state.build, tester: state.tester }; save(); render(); }
+};
+filterSel.onchange = render;
+render();
+</script>
+</body>
+</html>
