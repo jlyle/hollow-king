@@ -90,8 +90,10 @@ const SECTIONS = [
     ["ST-01", "R-01", "both", "Launch the game.", "Title screen appears with no errors in Godot's Output panel. Portrait layout."],
     ["ST-02", "R-10", "both", "Look at the Class buttons.", "Six classes in a 3×2 grid: Fighter, Rogue, Barbarian, Ranger, Wizard, Cleric."],
     ["ST-03", "R-04", "both", "Tap each class, then each species (Human, Dwarf, Halfling, Orc).", "Description text updates for each choice. Exactly one class and one species stay selected."],
-    ["ST-04", "C-04", "both", "Scroll to the bottom of the title screen.", "SRD 5.2.1 CC-BY-4.0 attribution text and \"5E compatible\" are visible."],
-    ["ST-05", "R-09", "both", "Check the start buttons with no saved run.", "Only \"Descend\" shows; no Continue button."],
+    ["ST-04", "C-04", "both", "Tap Credits at the bottom of the title screen.", "Credits screen shows the full SRD 5.2.1 CC-BY-4.0 attribution and \"5E compatible\". Title screen shows a one-line SRD note."],
+    ["ST-05", "R-09", "both", "Check the start buttons with no saved run.", "Only a gold \"Begin Descent\" button shows; no Continue button."],
+    ["ST-57", "R-18", "both", "Look over the title screen; tap different classes and species.", "One centred column; selected chips have a gold border and gold text; the card updates its name, role line, tagline and species line; nothing feels cramped."],
+    ["ST-58", "R-18", "desktop", "Launch on desktop.", "Window opens phone-shaped (540×960); the title screen fits without scrolling."],
   ]},
   { title: "2. Controls & Settings screens", items: [
     ["ST-06", "R-08", "both", "Tap Controls on the title screen.", "Controls screen lists Touch, Keyboard, Map Symbols, Class Buttons and Rules. It scrolls."],
@@ -101,7 +103,7 @@ const SECTIONS = [
     ["ST-10", "R-17", "both", "Change a setting, quit the game completely, relaunch, open Settings.", "The changed setting was remembered."],
   ]},
   { title: "3. New run & dungeon generation", items: [
-    ["ST-11", "R-03", "both", "Start a run (Descend). Note the first room layout.", "Floor 1 \"Sunken Cellars\" loads; status bar shows Floor 1/20, class, Lv 1, HP, AC, XP, Gold."],
+    ["ST-11", "R-03", "both", "Start a run (Begin Descent). Note the first room layout.", "Floor 1 \"Sunken Cellars\" loads; status bar shows Floor 1/20, class, Lv 1, HP, AC, XP, Gold."],
     ["ST-12", "R-03", "both", "Die or start another New Run with the same class.", "Floor 1 layout is different from the previous run."],
     ["ST-13", "R-03", "both", "Walk around.", "Unexplored areas are black; seen areas stay visible but dimmed when out of sight (fog of war)."],
     ["ST-14", "R-05", "both", "Descend through floors (this takes a while by hand).", "Floor themes change at 5 (Warrens), 9 (Flooded Caverns, water), 13 (Crypts, pillars), 17 (Infernal Forge, lava), 20 (Throne)."],
@@ -148,7 +150,7 @@ const SECTIONS = [
     ["ST-45", "R-09", "desktop", "Mid-run, close the game window and relaunch.", "Continue shows Floor/Lv/Class; tapping it restores the same map, HP and log."],
     ["ST-46", "R-09", "android", "Mid-run, swipe the app away from Recents, reopen.", "Continue restores the run."],
     ["ST-47", "R-09", "both", "Take a risky swing, quit before seeing the result, resume and repeat the same action.", "Same outcome both times (no save-scumming)."],
-    ["ST-48", "R-09", "both", "With a saved run, look at the start button.", "It reads \"New Run (replaces saved run)\"."],
+    ["ST-48", "R-09", "both", "With a saved run, look at the start buttons.", "Gold \"Continue - Floor N, Lv N Class\" on top; plain \"New Run (replaces saved run)\" below."],
   ]},
   { title: "9. Sound, haptics, tiles", items: [
     ["ST-49", "R-14", "both", "With sound on: move, attack, miss, get hit, kill, pick up gold, level up, descend.", "Each event has a distinct sound; nothing is ear-splitting; footsteps are quiet."],

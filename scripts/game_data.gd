@@ -17,36 +17,42 @@ const ABILITIES := ["str", "dex", "con", "int", "wis", "cha"]
 ## caster: casting ability ("" = none). slots: "full" | "half" | "". ranged: default long-range attack.
 const CLASSES := {
 	"Fighter": {
+		"tagline": "Armored front-liner who outlasts anything.", "role": "Melee",
 		"hit_die": 10, "primary": "str", "attack_ability": "str", "saves": ["str", "con"],
 		"scores": {"str": 17, "dex": 13, "con": 15, "int": 10, "wis": 12, "cha": 8},
 		"weapon": "Longsword", "dice": [1, 8], "caster": "", "slots": "", "ranged": "",
 		"desc": "Chain mail, shield, longsword, Defense style (AC 19). Second Wind heals as a Bonus Action. Extra Attack at level 5.",
 	},
 	"Rogue": {
+		"tagline": "Strikes from the shadows for huge damage.", "role": "Melee · Stealth",
 		"hit_die": 8, "primary": "dex", "attack_ability": "dex", "saves": ["dex", "int"],
 		"scores": {"str": 8, "dex": 17, "con": 15, "int": 13, "wis": 12, "cha": 10},
 		"weapon": "Rapier", "dice": [1, 8], "caster": "", "slots": "", "ranged": "",
 		"desc": "Leather armor, rapier. Hide (Bonus Action, Stealth with Expertise) for Advantage and Sneak Attack. Uncanny Dodge at level 5.",
 	},
 	"Barbarian": {
+		"tagline": "Rages through pain and hits hardest up close.", "role": "Melee",
 		"hit_die": 12, "primary": "str", "attack_ability": "str", "saves": ["str", "con"],
 		"scores": {"str": 17, "dex": 13, "con": 15, "int": 8, "wis": 12, "cha": 10},
 		"weapon": "Greataxe", "dice": [1, 12], "caster": "", "slots": "", "ranged": "",
 		"desc": "Unarmored Defense, greataxe. Rage (Bonus Action) halves physical damage and adds melee damage. Reckless Attack at level 2, Extra Attack at 5.",
 	},
 	"Ranger": {
+		"tagline": "Picks foes off with a longbow and nature magic.", "role": "Ranged · Half-caster",
 		"hit_die": 10, "primary": "dex", "attack_ability": "dex", "saves": ["str", "dex"],
 		"scores": {"str": 12, "dex": 17, "con": 14, "int": 10, "wis": 14, "cha": 8},
 		"weapon": "Shortsword", "dice": [1, 6], "caster": "wis", "slots": "half", "ranged": "longbow",
 		"desc": "Studded leather, shortsword and longbow (tap a far enemy to shoot). Hunter's Mark, Ensnaring Strike, Cure Wounds. Archery at 2, Extra Attack at 5.",
 	},
 	"Wizard": {
+		"tagline": "Fragile master of explosive spells.", "role": "Ranged · Caster",
 		"hit_die": 6, "primary": "int", "attack_ability": "dex", "saves": ["int", "wis"],
 		"scores": {"str": 8, "dex": 13, "con": 15, "int": 17, "wis": 12, "cha": 10},
 		"weapon": "Dagger", "dice": [1, 4], "caster": "int", "slots": "full", "ranged": "fire_bolt",
 		"desc": "Mage Armor, dagger. Fire Bolt at range; Magic Missile, Burning Hands, Thunderwave, then Shatter (3) and Fireball (5).",
 	},
 	"Cleric": {
+		"tagline": "Armored healer who scours the undead.", "role": "Melee · Caster",
 		"hit_die": 8, "primary": "wis", "attack_ability": "str", "saves": ["wis", "cha"],
 		"scores": {"str": 13, "dex": 10, "con": 14, "int": 8, "wis": 17, "cha": 13},
 		"weapon": "Mace", "dice": [1, 6], "caster": "wis", "slots": "full", "ranged": "sacred_flame",
@@ -55,10 +61,10 @@ const CLASSES := {
 }
 
 const SPECIES := {
-	"Human": {"darkvision": false, "desc": "Resourceful: Heroic Inspiration after each Long Rest - a missed attack is rerolled automatically."},
-	"Dwarf": {"darkvision": true, "desc": "Dwarven Toughness: +1 HP per level. Darkvision (see farther in the dark)."},
-	"Halfling": {"darkvision": false, "desc": "Luck: when you roll a natural 1 on an attack, reroll it."},
-	"Orc": {"darkvision": true, "desc": "Relentless Endurance: drop to 1 HP instead of 0, once per Long Rest. Darkvision."},
+	"Human": {"tagline": "Rerolls a missed attack after each Long Rest.", "darkvision": false, "desc": "Resourceful: Heroic Inspiration after each Long Rest - a missed attack is rerolled automatically."},
+	"Dwarf": {"tagline": "Extra hit points and sees in the dark.", "darkvision": true, "desc": "Dwarven Toughness: +1 HP per level. Darkvision (see farther in the dark)."},
+	"Halfling": {"tagline": "Lucky: natural 1s on attacks are rerolled.", "darkvision": false, "desc": "Luck: when you roll a natural 1 on an attack, reroll it."},
+	"Orc": {"tagline": "Shrugs off one killing blow per rest; sees in the dark.", "darkvision": true, "desc": "Relentless Endurance: drop to 1 HP instead of 0, once per Long Rest. Darkvision."},
 }
 
 ## lvl: spell level (0 = cantrip, -1 = Channel Divinity). min: character level needed.

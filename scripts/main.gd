@@ -54,6 +54,14 @@ const CONTROLS := [
 	["Stairs", "Short Rest. Floors 5, 9, 13, 17, 20 give a Long Rest"],
 ]
 
+# --- Visual style (D-11) ---
+var c_bg := Color("0b0b12")
+var c_panel := Color("13131c")
+var c_line := Color("2a2a3a")
+var c_text := Color("e9e6dc")
+var c_muted := Color("8d8a99")
+var c_gold := Color("e8c170")
+
 var game: Game
 var chosen_class := "Fighter"
 var chosen_species := "Human"
@@ -62,7 +70,6 @@ var title_screen: Control
 var game_screen: Control
 var overlay: Control
 var overlay_label: Label
-var desc_label: Label
 var status_label: Label
 var log_label: RichTextLabel
 var map_view: MapView
@@ -78,6 +85,12 @@ var btn_descend: Button
 var btn_help: Button
 var controls_panel: Control
 var travel_timer: Timer
+var credits_panel: Control
+var card_title: Label
+var card_meta: Label
+var card_tag: Label
+var card_desc: Label
+var card_species: RichTextLabel
 var btn_settings: Button
 var settings_panel: Control
 
@@ -95,13 +108,8 @@ var btn_continue: Button
 
 
 func _ready() -> void:
-	var th := Theme.new()
-	th.default_font_size = 26
-	theme = th
-	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.03, 0.05)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	theme = _make_theme()
+	add_child(_make_background())
 	_build_title()
 	_build_game()
 	_build_overlay()
@@ -110,6 +118,7 @@ func _ready() -> void:
 	_build_spells()
 	_build_controls()
 	_build_settings()
+	_build_credits()
 	map_view.use_tiles = settings["tiles"]
 	# Let the Android back button close the Controls screen instead of quitting.
 	get_tree().quit_on_go_back = false
@@ -148,8 +157,9 @@ func _choice_button(text: String, group: ButtonGroup, pressed: bool) -> Button:
 	b.toggle_mode = true
 	b.button_group = group
 	b.button_pressed = pressed
-	b.custom_minimum_size = Vector2(0, 64)
+	b.custom_minimum_size = Vector2(0, 56)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_size_override("font_size", 21)
 	return b
 
 
@@ -166,75 +176,122 @@ func _action_button(parent: Control, text: String, cb: Callable) -> Button:
 
 
 func _build_title() -> void:
-	title_screen = _full_margin(60)
-	var v := VBoxContainer.new()
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 16)
-	title_screen.add_child(v)
+	var root := CenterContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(root)
+	title_screen = root
+	var col := VBoxContainer.new()
+	col.custom_minimum_size = Vector2(620, 0)
+	col.add_theme_constant_override("separation", 0)
+	root.add_child(col)
 
-	var t := _label("DEPTHS OF THE\nHOLLOW KING", 46, Color("e8c170"))
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(t)
-	var sub := _label("20 floors. One hero. A new dungeon every run.", 22, Color(0.7, 0.7, 0.75))
+	# Title block
+	var t1 := _label("DEPTHS OF THE", 20, c_gold.darkened(0.25))
+	t1.add_theme_font_override("font", _spaced(8))
+	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(t1)
+	var t2 := _label("HOLLOW KING", 54, c_gold)
+	t2.add_theme_font_override("font", _spaced(5, 0.5))
+	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(t2)
+	col.add_child(_spacer(10))
+	col.add_child(_ornament())
+	col.add_child(_spacer(12))
+	var sub := _label("Twenty floors. One hero. A new dungeon every run.", 18, c_muted)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(sub)
+	col.add_child(sub)
+	col.add_child(_spacer(34))
 
-	v.add_child(_label("Class", 24, Color(0.85, 0.85, 0.9)))
-	var cls_row := GridContainer.new()
-	cls_row.columns = 3
-	cls_row.add_theme_constant_override("h_separation", 6)
-	cls_row.add_theme_constant_override("v_separation", 6)
-	v.add_child(cls_row)
+	# Class chips
+	col.add_child(_section_label("CLASS"))
+	col.add_child(_spacer(10))
+	var cls_grid := GridContainer.new()
+	cls_grid.columns = 3
+	cls_grid.add_theme_constant_override("h_separation", 10)
+	cls_grid.add_theme_constant_override("v_separation", 10)
+	col.add_child(cls_grid)
 	var cg := ButtonGroup.new()
 	for c in GameData.CLASSES.keys():
 		var b := _choice_button(c, cg, c == chosen_class)
 		b.pressed.connect(_on_class_pick.bind(c))
-		cls_row.add_child(b)
+		cls_grid.add_child(b)
+	col.add_child(_spacer(22))
 
-	v.add_child(_label("Species", 24, Color(0.85, 0.85, 0.9)))
+	# Species chips
+	col.add_child(_section_label("SPECIES"))
+	col.add_child(_spacer(10))
 	var sp_row := HBoxContainer.new()
-	v.add_child(sp_row)
+	sp_row.add_theme_constant_override("separation", 10)
+	col.add_child(sp_row)
 	var sg := ButtonGroup.new()
-	for s in GameData.SPECIES.keys():
-		var b := _choice_button(s, sg, s == chosen_species)
-		b.pressed.connect(_on_species_pick.bind(s))
+	for sname in GameData.SPECIES.keys():
+		var b := _choice_button(sname, sg, sname == chosen_species)
+		b.pressed.connect(_on_species_pick.bind(sname))
 		sp_row.add_child(b)
+	col.add_child(_spacer(22))
 
-	desc_label = _label("", 21, Color(0.8, 0.8, 0.85))
-	desc_label.custom_minimum_size = Vector2(0, 150)
-	v.add_child(desc_label)
+	# Class card
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _box(c_panel, c_line, 1, 14, 22, 18))
+	card.custom_minimum_size = Vector2(0, 236)
+	col.add_child(card)
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", 6)
+	card.add_child(cv)
+	card_title = _label("", 28, c_gold)
+	cv.add_child(card_title)
+	card_meta = _label("", 13, c_muted)
+	card_meta.add_theme_font_override("font", _spaced(2))
+	cv.add_child(card_meta)
+	cv.add_child(_spacer(4))
+	card_tag = _label("", 20, c_text)
+	cv.add_child(card_tag)
+	card_desc = _label("", 15, c_muted)
+	cv.add_child(card_desc)
+	cv.add_child(_spacer(6))
+	var rule := ColorRect.new()
+	rule.color = c_line
+	rule.custom_minimum_size = Vector2(0, 1)
+	cv.add_child(rule)
+	cv.add_child(_spacer(6))
+	card_species = RichTextLabel.new()
+	card_species.bbcode_enabled = true
+	card_species.fit_content = true
+	card_species.scroll_active = false
+	card_species.add_theme_font_size_override("normal_font_size", 16)
+	card_species.add_theme_color_override("default_color", c_text)
+	cv.add_child(card_species)
+	col.add_child(_spacer(26))
 
-	var ctl := Button.new()
-	ctl.text = "Controls"
-	ctl.custom_minimum_size = Vector2(0, 72)
-	ctl.pressed.connect(_show_controls)
-	ctl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title_btns := HBoxContainer.new()
-	title_btns.add_theme_constant_override("separation", 8)
-	v.add_child(title_btns)
-	title_btns.add_child(ctl)
-	var st := Button.new()
-	st.text = "Settings"
-	st.custom_minimum_size = Vector2(0, 72)
-	st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	st.pressed.connect(_show_settings)
-	title_btns.add_child(st)
-
+	# Primary actions
 	btn_continue = Button.new()
-	btn_continue.custom_minimum_size = Vector2(0, 96)
-	btn_continue.add_theme_font_size_override("font_size", 28)
-	btn_continue.add_theme_color_override("font_color", Color("7fc2ff"))
+	btn_continue.custom_minimum_size = Vector2(0, 76)
+	btn_continue.add_theme_font_size_override("font_size", 24)
 	btn_continue.pressed.connect(_on_continue)
-	v.add_child(btn_continue)
-
+	col.add_child(btn_continue)
+	col.add_child(_spacer(10))
 	btn_start = Button.new()
-	btn_start.custom_minimum_size = Vector2(0, 96)
-	btn_start.add_theme_font_size_override("font_size", 32)
+	btn_start.custom_minimum_size = Vector2(0, 76)
+	btn_start.add_theme_font_size_override("font_size", 26)
 	btn_start.pressed.connect(_on_start)
-	v.add_child(btn_start)
+	col.add_child(btn_start)
+	col.add_child(_spacer(18))
 
-	var credits := _label("5E compatible. " + ATTRIBUTION, 14, Color(0.5, 0.5, 0.55))
-	v.add_child(credits)
+	# Quiet links
+	var links := HBoxContainer.new()
+	links.alignment = BoxContainer.ALIGNMENT_CENTER
+	links.add_theme_constant_override("separation", 6)
+	col.add_child(links)
+	var first := true
+	for pair in [["Controls", _show_controls], ["Settings", _show_settings], ["Credits", _show_credits]]:
+		if not first:
+			links.add_child(_label("·", 18, c_line.lightened(0.3)))
+		first = false
+		links.add_child(_link_button(pair[0], pair[1]))
+	col.add_child(_spacer(8))
+	var foot := _label("5E compatible  ·  Rules from SRD 5.2.1 (CC-BY-4.0), see Credits", 12, c_muted.darkened(0.25))
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(foot)
 
 
 func _build_game() -> void:
@@ -381,6 +438,8 @@ func _notification(what: int) -> void:
 			_hide_spells()
 		elif settings_panel and settings_panel.visible:
 			settings_panel.hide()
+		elif credits_panel and credits_panel.visible:
+			credits_panel.hide()
 		elif game_screen and game_screen.visible and not (game and game.over):
 			_show_controls()  # back button = pause screen, not an accidental quit
 		else:
@@ -398,11 +457,14 @@ func _show_title() -> void:
 	var saved := Game.read_save()
 	btn_continue.visible = not saved.is_empty()
 	if saved.is_empty():
-		btn_start.text = "Descend"
+		btn_start.text = "Begin Descent"
+		_style_primary(btn_start, true)
 	else:
 		var sh: Dictionary = saved["hero"]
-		btn_continue.text = "Continue - Floor %d, Lv %d %s" % [saved["floor_num"], sh["level"], sh["cls"]]
-		btn_start.text = "New Run (replaces saved run)"
+		btn_continue.text = "Continue  -  Floor %d, Lv %d %s" % [saved["floor_num"], sh["level"], sh["cls"]]
+		_style_primary(btn_continue, true)
+		btn_start.text = "New Run  (replaces saved run)"
+		_style_primary(btn_start, false)
 
 
 func _on_class_pick(c: String) -> void:
@@ -417,8 +479,12 @@ func _on_species_pick(s: String) -> void:
 
 func _update_desc() -> void:
 	var c: Dictionary = GameData.CLASSES[chosen_class]
-	var s: Dictionary = GameData.SPECIES[chosen_species]
-	desc_label.text = "%s (d%d Hit Die): %s\n\n%s: %s" % [chosen_class, c["hit_die"], c["desc"], chosen_species, s["desc"]]
+	var sp: Dictionary = GameData.SPECIES[chosen_species]
+	card_title.text = chosen_class
+	card_meta.text = "%s  ·  D%d HIT DIE  ·  %s" % [String(c["role"]).to_upper(), c["hit_die"], String(c["primary"]).to_upper()]
+	card_tag.text = c["tagline"]
+	card_desc.text = c["desc"]
+	card_species.text = "[color=#e8c170]%s[/color]  [color=#8d8a99]-[/color]  %s" % [chosen_species, sp["tagline"]]
 
 
 func _on_start() -> void:
@@ -574,6 +640,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if controls_panel.visible:
 		if key.keycode in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 			_hide_controls()
+		get_viewport().set_input_as_handled()
+		return
+	if credits_panel.visible:
+		if key.keycode == KEY_ESCAPE:
+			credits_panel.hide()
 		get_viewport().set_input_as_handled()
 		return
 	if settings_panel.visible:
@@ -867,3 +938,163 @@ func _on_setting(pressed: bool, key: String) -> void:
 		"haptics":
 			if pressed:
 				_buzz("crit")
+
+
+# --- Visual style helpers (D-11) -------------------------------------------------------
+
+func _box(bg: Color, border: Color, bw: int, radius: int = 10, px: int = 16, py: int = 10) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(bw)
+	sb.set_corner_radius_all(radius)
+	sb.content_margin_left = px
+	sb.content_margin_right = px
+	sb.content_margin_top = py
+	sb.content_margin_bottom = py
+	sb.anti_aliasing = true
+	return sb
+
+
+func _make_theme() -> Theme:
+	var th := Theme.new()
+	th.default_font_size = 24
+	th.set_stylebox("normal", "Button", _box(c_panel, c_line, 1))
+	th.set_stylebox("hover", "Button", _box(c_panel.lightened(0.04), c_line.lightened(0.3), 1))
+	th.set_stylebox("pressed", "Button", _box(Color("2a2214"), c_gold, 2))
+	th.set_stylebox("hover_pressed", "Button", _box(Color("31281a"), c_gold, 2))
+	th.set_stylebox("disabled", "Button", _box(c_panel.darkened(0.35), c_line.darkened(0.3), 1))
+	th.set_stylebox("focus", "Button", StyleBoxEmpty.new())
+	th.set_color("font_color", "Button", c_text)
+	th.set_color("font_hover_color", "Button", Color.WHITE)
+	th.set_color("font_pressed_color", "Button", c_gold)
+	th.set_color("font_hover_pressed_color", "Button", c_gold)
+	th.set_color("font_focus_color", "Button", c_text)
+	th.set_color("font_disabled_color", "Button", c_muted.darkened(0.35))
+	return th
+
+
+## Dark background with a faint warm glow near the top.
+func _make_background() -> TextureRect:
+	var g := Gradient.new()
+	g.set_color(0, Color(0.14, 0.105, 0.055))
+	g.set_color(1, c_bg)
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.08)
+	gt.fill_to = Vector2(0.5, 0.75)
+	gt.width = 256
+	gt.height = 256
+	var bg := TextureRect.new()
+	bg.texture = gt
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return bg
+
+
+func _spaced(spacing: int, bold: float = 0.0) -> FontVariation:
+	var fv := FontVariation.new()
+	fv.base_font = ThemeDB.fallback_font
+	fv.spacing_glyph = spacing
+	fv.variation_embolden = bold
+	return fv
+
+
+func _section_label(text: String) -> Label:
+	var l := _label(text, 13, c_muted)
+	l.add_theme_font_override("font", _spaced(4))
+	return l
+
+
+func _spacer(height: int) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, height)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+
+## Thin gold line - dot - line, centred under the title.
+func _ornament() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	for w in [70, 6, 70]:
+		var r := ColorRect.new()
+		r.color = Color(c_gold, 0.55 if w > 6 else 0.9)
+		r.custom_minimum_size = Vector2(w, 2 if w > 6 else 6)
+		r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(r)
+	return row
+
+
+func _link_button(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.flat = true
+	b.add_theme_font_size_override("font_size", 18)
+	b.add_theme_color_override("font_color", c_muted)
+	b.add_theme_color_override("font_hover_color", c_gold)
+	b.add_theme_color_override("font_pressed_color", c_gold)
+	b.pressed.connect(cb)
+	return b
+
+
+## Gold filled button for the main action on a screen (or reset to the normal style).
+func _style_primary(b: Button, on: bool) -> void:
+	for st in ["normal", "hover", "pressed", "hover_pressed"]:
+		b.remove_theme_stylebox_override(st)
+	for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		b.remove_theme_color_override(fc)
+	if not on:
+		return
+	b.add_theme_stylebox_override("normal", _box(c_gold, c_gold, 0, 12))
+	b.add_theme_stylebox_override("hover", _box(c_gold.lightened(0.12), c_gold.lightened(0.12), 0, 12))
+	b.add_theme_stylebox_override("pressed", _box(c_gold.darkened(0.15), c_gold.darkened(0.15), 0, 12))
+	b.add_theme_stylebox_override("hover_pressed", _box(c_gold.darkened(0.1), c_gold.darkened(0.1), 0, 12))
+	for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(fc, Color("1a140a"))
+
+
+# --- Credits (C-04) ---------------------------------------------------------------------
+
+func _build_credits() -> void:
+	var panel := ColorRect.new()
+	panel.color = Color(c_bg, 0.97)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(panel)
+	credits_panel = panel
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(cc)
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(600, 0)
+	v.add_theme_constant_override("separation", 14)
+	cc.add_child(v)
+	var title := _label("CREDITS", 34, c_gold)
+	title.add_theme_font_override("font", _spaced(6))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(title)
+	v.add_child(_ornament())
+	v.add_child(_spacer(8))
+	for pair in [
+		["GAME", "Depths of the Hollow King. Design: Jim (jlyle). Built with Godot Engine."],
+		["ART & SOUND", "Original tiles and sound effects, generated by the scripts in tools/."],
+		["RULES", "5E compatible. " + ATTRIBUTION],
+	]:
+		v.add_child(_section_label(pair[0]))
+		v.add_child(_label(pair[1], 17, c_text))
+		v.add_child(_spacer(6))
+	var close := Button.new()
+	close.text = "Close"
+	close.custom_minimum_size = Vector2(0, 72)
+	close.pressed.connect(credits_panel.hide)
+	v.add_child(close)
+	panel.hide()
+
+
+func _show_credits() -> void:
+	credits_panel.show()
