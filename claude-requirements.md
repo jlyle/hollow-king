@@ -39,6 +39,8 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | R-09 | A run survives Android closing the app: it is saved automatically and can be resumed | Done | Autosave after every turn; **Continue** on the title screen. From B-01. |
 | R-10 | Six playable classes: Fighter, Rogue, Wizard, Cleric, Barbarian, Ranger | Done | Cleric, Barbarian, Ranger added from B-02. |
 | R-11 | Spells, including spells that force saving throws, with conditions and Concentration | Done | Spell menu; monster saves use per-ability save bonuses. From B-02. See 5.3. |
+| R-12 | Ranged and spellcasting monsters | Done | Archers shoot from range; casters force hero saving throws, heal allies, raise the dead. From B-04. See 5.4. |
+| R-13 | Floor-specific mini-bosses on floors 5, 10 and 15 | Done | Each guards and seals the stairs until defeated. From B-05. See 5.4. |
 
 ---
 
@@ -79,7 +81,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - Also implemented: proficiency bonus, the XP table to level 20, Hit Dice, and Ability Score Improvements at levels 4, 8, 12, 16 and 19.
 - Each turn has one **Action** (move, attack or cast) and one **Bonus Action** (potion, Second Wind or Hide), which does not end the turn.
 - **Fighter:** AC 19 (Defense fighting style), Second Wind, Extra Attack at levels 5, 11 and 20.
-- **Rogue:** Hide (Stealth with Expertise vs DC 15), Sneak Attack with Advantage, Uncanny Dodge at level 5.
+- **Rogue:** Hide (Stealth with Expertise vs DC 15), Sneak Attack with Advantage, Uncanny Dodge at level 5, Evasion at level 7 (DEX save for half damage: none on a success, half on a failure).
 - **Wizard:** Mage Armor (AC 13 + DEX), spells (5.3), Arcane Recovery.
 - **Cleric (Protector):** chain mail + shield (AC 18), mace. Spells (5.3). Channel Divinity uses: 2 at level 2, 3 at 6, 4 at 18.
 - **Barbarian:** Unarmored Defense (10 + DEX + CON), greataxe. **Rage** (bonus action, 10 turns): halves physical damage taken, +2/+3/+4 melee damage. Uses 2/3/4/5/6 at levels 1/3/6/12/17. **Reckless Attack** toggle from level 2 (Advantage on your melee attacks, enemies get Advantage on you). Extra Attack at level 5.
@@ -110,9 +112,36 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - Monster stat blocks carry save bonuses for all six abilities, plus undead/damage-type tags.
 
 ### 5.4 Enemies
-- Giant Rat, Kobold, Goblin, Skeleton, Zombie, Wolf, Hobgoblin, Ghoul, Bugbear, Giant Spider, Ogre, Minotaur, Wight, Wraith, Troll and Hill Giant.
-- **Boss:** the Hollow King (AC 18, 200 HP, 3 attacks), who raises skeletons.
+- **Melee:** Giant Rat, Kobold, Goblin, Skeleton, Zombie, Wolf, Hobgoblin, Ghoul, Bugbear, Giant Spider, Ogre, Minotaur, Wight, Wraith, Troll and Hill Giant.
 - **Traits:** Pack Tactics, Undead Fortitude, Regeneration.
+
+**Ranged (R-12)**. Archers shoot when you're 2+ squares away and in sight, and fight in melee when you're adjacent.
+
+| Monster | Floors | Ranged attack |
+|---|---|---|
+| Goblin Archer | 2–7 | Shortbow +4, 1d6+2, 12 squares |
+| Skeleton Archer | 4–9 | Shortbow +5, 1d6+3, 12 squares |
+
+**Spellcasters (R-12).** These have original names and simplified spells. Their save spells make **you** roll a saving throw against their DC.
+
+| Monster | Floors | Spells |
+|---|---|---|
+| Kobold Shaman | 2–6 | Fire Bolt (spell attack +4, 1d10 fire) |
+| Cult Acolyte | 4–10 | Sacred Flame (DEX DC 12, 1d8 radiant, nothing on a save); Mend (heals a wounded ally 2d4+2) |
+| Dark Adept | 9–15 | Sickening Ray (CON DC 13, 2d8 poison, half on a save, **Poisoned** 2 turns on a fail); Fire Bolt (+5, 2d10) |
+| Necromancer | 14–20 | Blight (CON DC 15, 4d8 necrotic, half on a save); raises 2 skeletons every 6 turns |
+
+- **Poisoned (hero):** Disadvantage on your attack rolls while it lasts.
+
+**Mini-bosses (R-13).** Each stands guard by the stairs and **seals them** (red `>`) until defeated. Shown as `&`.
+
+| Floor | Mini-boss | Highlights |
+|---|---|---|
+| 5 | Goblin Warchief | AC 17, 52 HP, 2 attacks, shortbow, calls 2 goblins every 6 turns |
+| 10 | The Drowned Oracle | AC 14, 85 HP; Tidal Lash (CON DC 14, 3d8, push 2); Sickening Ray; Mend |
+| 15 | The Bone Warden | Undead (immune to Turn Undead), AC 17, 130 HP, 2 attacks; Grave Chill (WIS DC 15, 3d8 necrotic); raises skeletons |
+
+**Final boss:** the Hollow King on floor 20 (AC 18, 200 HP, 3 attacks), who raises skeletons.
 
 ### 5.5 Items
 - Potion of Healing (2d4+2) and Greater Healing (4d4+4).
@@ -133,7 +162,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - Areas are measured in squares (1 square = 5 ft); cones aim at your current target.
 - Ensnaring Strike is primed before the hit; Hunter's Mark moves to the next creature you hit for free when its target dies.
 - Rage lasts 10 turns. Spirit Guardians lasts until Concentration breaks or you change floors.
-- Monster stat blocks are trimmed to AC, HP, attacks and one key trait.
+- Monster stat blocks are trimmed to AC, HP, attacks and one key trait. Spellcasting monsters and mini-bosses are original creatures with simplified spells, each on its own cooldown.
 
 ---
 
@@ -159,8 +188,8 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | B-01 | Save/resume a run when Android closes the app | Done (see R-09) |
 | B-02 | More classes (Cleric, Barbarian, Ranger) and spells with saving throws | Done (see R-10, R-11) |
 | B-03 | Inventory screen; shops between floors; scrolls and wands | Proposed |
-| B-04 | Ranged and spellcasting monsters | Proposed |
-| B-05 | Mini-bosses on floors 5, 10, 15 | Proposed |
+| B-04 | Ranged and spellcasting monsters | Done (see R-12) |
+| B-05 | Mini-bosses on floors 5, 10, 15 | Done (see R-13) |
 | B-06 | Sound effects and haptics | Proposed |
 | B-07 | Optional tileset to replace ASCII | Proposed |
 | B-08 | Verify all monster stats against SRD 5.2.1 (C-06) | Planned |
@@ -178,3 +207,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | D-08: this file created as the source of truth. |
 | 2026-11-19 | B-01 built as R-09: autosave every turn, Continue on title, save deleted on death/victory. |
 | 2026-11-19 | B-02 built as R-10/R-11: Cleric, Barbarian, Ranger; spell menu with saving-throw spells, conditions, Concentration. Save format v2 (older saves are discarded). |
+| 2026-11-19 | B-04/B-05 built as R-12/R-13: archers, spellcasting monsters (hero saving throws, Poisoned), mini-bosses on 5/10/15 sealing the stairs; Rogue Evasion. |

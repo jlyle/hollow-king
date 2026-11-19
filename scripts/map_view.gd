@@ -79,7 +79,7 @@ func _draw() -> void:
 				draw_rect(Rect2(cell_pos, Vector2(cell, cell)), Color(floor_col, 0.22))
 			if p == game.stairs:
 				ch = ">"
-				col = Color("ffffff")
+				col = Color("ff5a5a") if game.stairs_sealed() else Color("ffffff")  # R-13: red = sealed
 			if game.items.has(p):
 				var g: Array = ITEM_GLYPHS[game.items[p]]
 				ch = g[0]

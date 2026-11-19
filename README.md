@@ -19,7 +19,7 @@ Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, 
 | **Rising difficulty** | Each monster has a floor range, so stronger monsters replace weaker ones. More monsters per floor the deeper you go. |
 | **Hero (2024 rules)** | 6 classes (Fighter, Rogue, Barbarian, Ranger, Wizard, Cleric) × 4 species (Human, Dwarf, Halfling, Orc). Standard array + background bonus, proficiency bonus, XP table, Hit Dice, ASIs at 4/8/12/16/19. |
 | **Combat** | d20 + modifier + proficiency vs AC; nat 20 crits double the dice; nat 1 always misses; Advantage/Disadvantage. |
-| **Enemies** | 16 SRD-style monsters (Giant Rat → Hill Giant) plus an original boss. Pack Tactics, Undead Fortitude, Troll regeneration (fire stops it), boss raises skeletons. |
+| **Enemies** | 16 SRD-style melee monsters (Giant Rat → Hill Giant), goblin and skeleton **archers**, 4 **spellcasters** (their save spells make *you* roll), **mini-bosses** on floors 5, 10, 15 that seal the stairs (`&`), and the Hollow King on 20. |
 | **Rests** | Taking the stairs is a Short Rest (spend Hit Dice). Arriving on floors 5, 9, 13, 17 and 20 gives a Long Rest. |
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
 | **Save / resume** | Autosaves after every action and when Android pauses or closes the app. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
@@ -74,5 +74,4 @@ Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` 
 
 ## Suggested next steps
 1. Inventory screen, shops between floors, scrolls/wands.
-2. Ranged and spellcasting monsters; floor-specific mini-bosses on 5/10/15.
-3. Sound, haptics, and an optional tileset to replace the ASCII.
+2. Sound, haptics, and an optional tileset to replace the ASCII.

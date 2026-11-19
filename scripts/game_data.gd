@@ -112,11 +112,45 @@ const MONSTERS := [
 	{"key": "wight", "name": "Wight", "ch": "W", "color": "8fb3d9", "xp": 700, "ac": 14, "hp": 82, "atk": 4, "dmg": [1, 8, 2], "attacks": 2, "lo": 12, "hi": 19, "pp": 13, "undead": true, "sv": [2, 2, 3, 0, 1, 2]},
 	{"key": "wraith", "name": "Wraith", "ch": "R", "color": "6b6bb5", "xp": 1800, "ac": 13, "hp": 67, "atk": 6, "dmg": [3, 8, 3], "attacks": 1, "lo": 15, "hi": 20, "pp": 12, "undead": true, "dtype": "necrotic", "sv": [-2, 3, 3, 1, 2, 2]},
 	{"key": "troll", "name": "Troll", "ch": "T", "color": "5fae5f", "xp": 1800, "ac": 15, "hp": 94, "atk": 7, "dmg": [2, 6, 4], "attacks": 3, "lo": 16, "hi": 20, "pp": 15, "regen": 15, "sv": [4, 1, 5, -2, -1, -2]},
+	# --- Ranged and spellcasting monsters (R-12) ---
+	{"key": "goblin_archer", "name": "Goblin Archer", "ch": "g", "color": "d4e86a", "xp": 50, "ac": 15, "hp": 10, "atk": 4, "dmg": [1, 6, 2], "attacks": 1, "lo": 2, "hi": 7, "pp": 9, "sv": [-1, 2, 0, 0, -1, -1],
+		"ranged": {"name": "shortbow", "atk": 4, "dmg": [1, 6, 2], "range": 12}},
+	{"key": "skeleton_archer", "name": "Skeleton Archer", "ch": "s", "color": "c9d6ff", "xp": 50, "ac": 14, "hp": 13, "atk": 5, "dmg": [1, 6, 3], "attacks": 1, "lo": 4, "hi": 9, "pp": 9, "undead": true, "sv": [0, 3, 2, -2, -1, -3],
+		"ranged": {"name": "shortbow", "atk": 5, "dmg": [1, 6, 3], "range": 12}},
+	{"key": "kobold_shaman", "name": "Kobold Shaman", "ch": "k", "color": "ff9f43", "xp": 50, "ac": 12, "hp": 9, "atk": 4, "dmg": [1, 4, 2], "attacks": 1, "lo": 2, "hi": 6, "pp": 10, "sv": [-2, 2, 0, 0, 1, 0],
+		"spells": [{"name": "Fire Bolt", "kind": "attack", "atk": 4, "dmg": [1, 10, 0], "dtype": "fire", "range": 10, "cd": 0}]},
+	{"key": "cult_acolyte", "name": "Cult Acolyte", "ch": "c", "color": "e0c3ff", "xp": 100, "ac": 13, "hp": 18, "atk": 3, "dmg": [1, 6, 1], "attacks": 1, "lo": 4, "hi": 10, "pp": 12, "sv": [0, 0, 1, 0, 3, 1],
+		"spells": [
+			{"name": "Mend", "kind": "heal", "dmg": [2, 4, 2], "range": 6, "cd": 3},
+			{"name": "Sacred Flame", "kind": "save", "ability": "dex", "dc": 12, "dmg": [1, 8, 0], "dtype": "radiant", "half": false, "range": 10, "cd": 0}]},
+	{"key": "dark_adept", "name": "Dark Adept", "ch": "d", "color": "b07cd8", "xp": 450, "ac": 12, "hp": 40, "atk": 4, "dmg": [1, 6, 2], "attacks": 1, "lo": 9, "hi": 15, "pp": 11, "sv": [0, 2, 1, 3, 2, 1],
+		"spells": [
+			{"name": "Sickening Ray", "kind": "save", "ability": "con", "dc": 13, "dmg": [2, 8, 0], "dtype": "poison", "half": true, "range": 10, "cd": 2, "effect": "poison"},
+			{"name": "Fire Bolt", "kind": "attack", "atk": 5, "dmg": [2, 10, 0], "dtype": "fire", "range": 10, "cd": 0}]},
+	{"key": "necromancer", "name": "Necromancer", "ch": "N", "color": "9b6bd6", "xp": 1800, "ac": 13, "hp": 66, "atk": 5, "dmg": [1, 8, 2], "attacks": 1, "lo": 14, "hi": 20, "pp": 13, "sv": [0, 2, 2, 6, 4, 1],
+		"summon": {"key": "skeleton", "n": 2, "cd": 6, "msg": "chants, and the dead rise!"},
+		"spells": [{"name": "Blight", "kind": "save", "ability": "con", "dc": 15, "dmg": [4, 8, 0], "dtype": "necrotic", "half": true, "range": 10, "cd": 2}]},
 	{"key": "giant", "name": "Hill Giant", "ch": "H", "color": "c79a6b", "xp": 1800, "ac": 13, "hp": 105, "atk": 8, "dmg": [3, 8, 5], "attacks": 2, "lo": 17, "hi": 20, "pp": 12, "sv": [5, -1, 4, -3, -1, -2]},
 ]
 
 ## Original final boss (not from the SRD). Immune to Turn Undead.
-const BOSS := {"key": "hollow_king", "name": "Hollow King", "ch": "K", "color": "c58bff", "xp": 5900, "ac": 18, "hp": 200, "atk": 9, "dmg": [2, 8, 5], "attacks": 3, "lo": 20, "hi": 20, "pp": 16, "boss": true, "undead": true, "turn_immune": true, "sv": [5, 1, 9, 2, 7, 4]}
+const BOSS := {"key": "hollow_king", "name": "Hollow King", "ch": "K", "color": "c58bff", "xp": 5900, "ac": 18, "hp": 200, "atk": 9, "dmg": [2, 8, 5], "attacks": 3, "lo": 20, "hi": 20, "pp": 16, "boss": true, "undead": true, "turn_immune": true, "sv": [5, 1, 9, 2, 7, 4],
+	"summon": {"key": "skeleton", "n": 2, "cd": 5, "msg": "raises the dead!"}}
+
+## Original mini-bosses (R-13), keyed by floor. They guard and seal the stairs until defeated.
+const MINI_BOSSES := {
+	5: {"key": "warchief", "name": "Goblin Warchief", "ch": "&", "color": "9be04f", "xp": 700, "ac": 17, "hp": 52, "atk": 5, "dmg": [1, 8, 3], "attacks": 2, "lo": 5, "hi": 5, "pp": 12, "mini": true, "sv": [3, 2, 2, 0, 0, 1],
+		"ranged": {"name": "shortbow", "atk": 5, "dmg": [1, 6, 3], "range": 12},
+		"summon": {"key": "goblin", "n": 2, "cd": 6, "msg": "bellows for reinforcements!"}},
+	10: {"key": "oracle", "name": "Drowned Oracle", "ch": "&", "color": "4fc3e0", "xp": 1800, "ac": 14, "hp": 85, "atk": 6, "dmg": [1, 8, 3], "attacks": 1, "lo": 10, "hi": 10, "pp": 15, "mini": true, "sv": [1, 2, 3, 2, 4, 3],
+		"spells": [
+			{"name": "Mend", "kind": "heal", "dmg": [3, 8, 3], "range": 6, "cd": 5},
+			{"name": "Tidal Lash", "kind": "save", "ability": "con", "dc": 14, "dmg": [3, 8, 0], "dtype": "bludgeoning", "half": true, "range": 8, "cd": 2, "effect": "push"},
+			{"name": "Sickening Ray", "kind": "save", "ability": "con", "dc": 14, "dmg": [2, 8, 0], "dtype": "poison", "half": true, "range": 10, "cd": 3, "effect": "poison"}]},
+	15: {"key": "bone_warden", "name": "Bone Warden", "ch": "&", "color": "f2ead3", "xp": 2900, "ac": 17, "hp": 130, "atk": 7, "dmg": [2, 8, 4], "attacks": 2, "lo": 15, "hi": 15, "pp": 14, "mini": true, "undead": true, "turn_immune": true, "sv": [5, 1, 5, 0, 3, 2],
+		"summon": {"key": "skeleton_archer", "n": 2, "cd": 5, "msg": "drags archers from the ossuary!"},
+		"spells": [{"name": "Grave Chill", "kind": "save", "ability": "wis", "dc": 15, "dmg": [3, 8, 0], "dtype": "necrotic", "half": true, "range": 8, "cd": 3}]},
+}
 
 
 static func mod(score: int) -> int:

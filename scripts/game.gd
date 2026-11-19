@@ -83,7 +83,7 @@ func _make_hero(cls: String, species: String) -> void:
 		"arcane_used": false,
 		"hidden": false, "stealth": 0,
 		"rage": 0, "reckless": false,
-		"conc": "", "ensnare_ready": false,
+		"conc": "", "ensnare_ready": false, "poisoned": 0,
 		"inspiration": species == "Human", "relentless": species == "Orc",
 		"kills": 0,
 	}
@@ -174,6 +174,12 @@ func _spawn(d: Dictionary) -> void:
 				if q != null:
 					_add_monster(md, q)
 
+	# R-13: mini-boss guarding (and sealing) the stairs on floors 5, 10, 15.
+	if GameData.MINI_BOSSES.has(floor_num) and stairs.x >= 0:
+		var guard = _free_neighbor(stairs)
+		if guard != null:
+			_add_monster(GameData.MINI_BOSSES[floor_num], guard)
+
 	var boss_pos: Vector2i = d["boss"]
 	if boss_pos.x >= 0:
 		_add_monster(GameData.BOSS, boss_pos)
@@ -207,6 +213,7 @@ func _add_monster(md: Dictionary, p: Vector2i) -> Dictionary:
 	m["turned"] = 0
 	m["guided"] = false
 	m["marked"] = false
+	m["cds"] = {}      # spell / summon cooldowns (R-12)
 	monsters.append(m)
 	return m
 
@@ -271,6 +278,11 @@ func load_run() -> bool:
 	turn = data["turn"]
 	log_lines = data["log_lines"]
 	bonus_used = data["bonus_used"]
+	if not hero.has("poisoned"):
+		hero["poisoned"] = 0
+	for m in monsters:
+		if not m.has("cds"):
+			m["cds"] = {}
 	over = false
 	won = false
 	target = null
@@ -343,6 +355,21 @@ func explored_walkable(p: Vector2i) -> bool:
 
 func on_stairs() -> bool:
 	return hero["pos"] == stairs
+
+
+## R-13: the stairs stay sealed while a mini-boss on this floor lives.
+func stairs_sealed() -> bool:
+	for m in monsters:
+		if m["hp"] > 0 and m.get("mini", false):
+			return true
+	return false
+
+
+func _guardian_name() -> String:
+	for m in monsters:
+		if m["hp"] > 0 and m.get("mini", false):
+			return m["name"]
+	return ""
 
 
 func hero_ac() -> int:
@@ -434,6 +461,8 @@ func status_extra() -> String:
 			parts.append("Reckless")
 	if hero["conc"] != "":
 		parts.append("Conc: %s" % GameData.SPELLS[hero["conc"]]["name"])
+	if int(hero.get("poisoned", 0)) > 0:
+		parts.append("POISONED %d" % hero["poisoned"])
 	if hero["hidden"]:
 		parts.append("HIDDEN")
 	return "  ".join(PackedStringArray(parts))
@@ -468,7 +497,10 @@ func player_step(d: Vector2i) -> bool:
 		hero["pos"] = t
 		_pickup()
 		if t == stairs:
-			say("Stairs lead down. Tap Descend (or tap yourself).")
+			if stairs_sealed():
+				say("[color=#ff6b6b]A ward seals the stairs. Defeat the %s first.[/color]" % _guardian_name())
+			else:
+				say("Stairs lead down. Tap Descend (or tap yourself).")
 	_end_turn()
 	return true
 
@@ -573,6 +605,9 @@ func player_descend() -> void:
 		return
 	if not on_stairs():
 		say("You need to stand on the stairs (>).")
+		return
+	if stairs_sealed():
+		say("[color=#ff6b6b]The stairs are sealed until the %s falls.[/color]" % _guardian_name())
 		return
 	var next := floor_num + 1
 	if next in LONG_REST_FLOORS:
@@ -741,6 +776,8 @@ func _spell_attack(t: Dictionary, sname: String, dice: Array, kind: String) -> b
 		adv += 1
 	if _enemy_adjacent():
 		dis += 1  # ranged attack with an enemy within 5 ft
+	if int(hero.get("poisoned", 0)) > 0:
+		dis += 1  # Poisoned: Disadvantage on attack rolls
 	var a := _net_adv(adv, dis)
 	var bonus: int = _caster_mod() + prof()
 	var r := _hero_d20(a)
@@ -781,9 +818,10 @@ func _area_save(targets: Array, sname: String, dmg: int, kind: String, ability: 
 			_push(m, 2)
 	if radius > 0 and _cheb(center, hero["pos"]) <= radius:
 		var hs := ["str", "dex", "con", "int", "wis", "cha"][ability] as String
-		var self_dmg := dmg / 2 if _hero_save(hs) >= dc else dmg
-		say("[color=#ff9966]You're caught in your own %s![/color]" % sname)
-		_hurt_hero(self_dmg, "your own %s" % sname)
+		var res := _hero_save_damage(hs, dc, dmg, true)
+		say("[color=#ff9966]You're caught in your own %s (%d)![/color]" % [sname, res[0]])
+		if int(res[0]) > 0:
+			_hurt_hero(res[0], "your own %s" % sname)
 
 
 func _set_conc(key: String) -> void:
@@ -971,6 +1009,8 @@ func _weapon_attack(m: Dictionary, ranged: bool) -> void:
 		adv += 1
 	if ranged and _enemy_adjacent():
 		dis += 1
+	if int(hero.get("poisoned", 0)) > 0:
+		dis += 1  # Poisoned: Disadvantage on attack rolls
 	var a := _net_adv(adv, dis)
 
 	var ab: String = "dex" if ranged else c["attack_ability"]
@@ -1085,7 +1125,7 @@ func _check_level_up() -> void:
 func _new_feature(cls: String, lvl: int) -> String:
 	var table := {
 		"Fighter": {5: "Extra Attack.", 11: "Two Extra Attacks."},
-		"Rogue": {5: "Uncanny Dodge."},
+		"Rogue": {5: "Uncanny Dodge.", 7: "Evasion (DEX saves: none on success, half on failure)."},
 		"Barbarian": {2: "Reckless Attack (button).", 5: "Extra Attack."},
 		"Ranger": {2: "Archery: +2 to longbow attacks.", 5: "Extra Attack."},
 		"Wizard": {3: "Shatter.", 5: "Fireball. Fire Bolt now 2d10."},
@@ -1133,6 +1173,10 @@ func _end_turn() -> void:
 	monsters = monsters.filter(func(mm): return mm["hp"] > 0)
 	if target != null and target["hp"] <= 0:
 		target = null
+	if int(hero.get("poisoned", 0)) > 0:
+		hero["poisoned"] -= 1
+		if int(hero["poisoned"]) == 0:
+			say("The poison wears off.")
 	if int(hero["rage"]) > 0:
 		hero["rage"] -= 1
 		if int(hero["rage"]) == 0:
@@ -1146,6 +1190,11 @@ func _end_turn() -> void:
 # --- Monster AI --------------------------------------------------------------------
 
 func _monster_act(m: Dictionary) -> void:
+	if not m.has("cds"):
+		m["cds"] = {}
+	var cds: Dictionary = m["cds"]
+	for k in cds.keys():
+		cds[k] = maxi(0, int(cds[k]) - 1)
 	var regen: int = m.get("regen", 0)
 	if regen > 0 and m["hp"] < m["hp_max"]:
 		if m["no_regen"]:
@@ -1186,25 +1235,13 @@ func _monster_act(m: Dictionary) -> void:
 		m["awake"] = true
 		if m.get("boss", false):
 			say("[color=#c58bff]The Hollow King rises from his throne.[/color]")
+		elif m.get("mini", false):
+			say("[color=#ff6b6b]The %s stands guard over the stairs![/color]" % m["name"])
 	if not m["awake"]:
 		return
 
-	if m.get("boss", false):
-		m["cd"] -= 1
-		if m["cd"] <= 0:
-			m["cd"] = 5
-			var raised := 0
-			for d in DungeonGen.DIRS:
-				if raised >= 2 or monsters.size() > 14:
-					break
-				var q: Vector2i = mp + d
-				if _walkable(q) and q != hp and monster_at(q) == null:
-					var s := _add_monster(GameData.monster("skeleton"), q)
-					s["awake"] = true
-					raised += 1
-			if raised > 0:
-				say("[color=#c58bff]The Hollow King raises the dead![/color]")
-				return
+	if _monster_special(m, dist, sees):
+		return
 
 	if dist <= 1 and _can_step(mp, hp - mp):
 		_monster_attack(m)
@@ -1213,12 +1250,15 @@ func _monster_act(m: Dictionary) -> void:
 
 
 func _monster_attack(m: Dictionary) -> void:
+	_monster_attack_rolls(m, int(m["attacks"]), int(m["atk"]), m["dmg"], String(m.get("dtype", "phys")), "hits")
+
+
+## Attack rolls against the hero (melee, ranged weapon, or spell attack).
+func _monster_attack_rolls(m: Dictionary, n: int, atk: int, dice: Array, dtype: String, verb: String) -> void:
 	var ac := hero_ac()
 	var hits := 0
 	var total := 0
-	var n: int = m["attacks"]
-	var dice: Array = m["dmg"]
-	var physical: bool = m.get("dtype", "phys") == "phys"
+	var physical: bool = dtype == "phys"
 	var raging := int(hero["rage"]) > 0
 	for _i in n:
 		var adv := 0
@@ -1230,7 +1270,7 @@ func _monster_attack(m: Dictionary) -> void:
 		if m.get("restrained", false):
 			dis += 1
 		var r := d20(_net_adv(adv, dis))
-		if r == 20 or (r != 1 and r + int(m["atk"]) >= ac):
+		if r == 20 or (r != 1 and r + atk >= ac):
 			var dmg: int = roll(int(dice[0]) * (2 if r == 20 else 1), dice[1]) + int(dice[2])
 			if raging and physical:
 				dmg = dmg / 2
@@ -1241,14 +1281,128 @@ func _monster_attack(m: Dictionary) -> void:
 			hits += 1
 			total += dmg
 	if hits == 0:
-		say("The %s misses you." % m["name"])
+		say("The %s misses you%s." % [m["name"], "" if verb == "hits" else " (" + verb + ")"])
 		return
 	var rage_note := " (Rage halves it)" if raging and physical else ""
 	if n == 1:
-		say("The %s hits you for %d%s." % [m["name"], total, rage_note])
+		say("The %s %s you for %d%s." % [m["name"], verb, total, rage_note])
 	else:
-		say("The %s hits you %d of %d times for %d%s." % [m["name"], hits, n, total, rage_note])
+		say("The %s %s you %d of %d times for %d%s." % [m["name"], verb, hits, n, total, rage_note])
 	_hurt_hero(total, "a " + String(m["name"]))
+
+
+## R-12: summons, spells and ranged attacks. Returns true if the monster used its turn.
+func _monster_special(m: Dictionary, dist: int, sees: bool) -> bool:
+	var cds: Dictionary = m["cds"]
+	if m.has("summon") and int(cds.get("summon", 2)) <= 0:
+		var sm: Dictionary = m["summon"]
+		cds["summon"] = sm["cd"]
+		var mp: Vector2i = m["pos"]
+		var raised := 0
+		for d in DungeonGen.DIRS:
+			if raised >= int(sm["n"]) or monsters.size() > 16:
+				break
+			var q: Vector2i = mp + d
+			if _walkable(q) and q != hero["pos"] and monster_at(q) == null:
+				var s := _add_monster(GameData.monster(sm["key"]), q)
+				s["awake"] = true
+				raised += 1
+		if raised > 0:
+			say("[color=#c58bff]The %s %s[/color]" % [m["name"], sm["msg"]])
+			return true
+	elif m.has("summon") and not cds.has("summon"):
+		cds["summon"] = 2  # first summon a couple of turns after waking
+
+	if not sees:
+		return false
+	for item in m.get("spells", []):
+		var sp: Dictionary = item
+		var sname: String = sp["name"]
+		if int(cds.get(sname, 0)) > 0:
+			continue
+		match sp["kind"]:
+			"heal":
+				var patient = _wounded_ally(m, int(sp["range"]))
+				if patient != null:
+					var dice: Array = sp["dmg"]
+					var amt := roll(dice[0], dice[1]) + int(dice[2])
+					patient["hp"] = mini(int(patient["hp_max"]), int(patient["hp"]) + amt)
+					cds[sname] = sp["cd"]
+					var who := "itself" if is_same(patient, m) else "the " + String(patient["name"])
+					say("The %s casts %s on %s (+%d HP)." % [m["name"], sname, who, amt])
+					return true
+			"attack":
+				if dist >= 2 and dist <= int(sp["range"]):
+					cds[sname] = sp["cd"]
+					_monster_attack_rolls(m, 1, int(sp["atk"]), sp["dmg"], String(sp["dtype"]), "casts " + sname + " at")
+					return true
+			"save":
+				if dist <= int(sp["range"]):
+					cds[sname] = sp["cd"]
+					_monster_save_spell(m, sp)
+					return true
+	if m.has("ranged") and dist >= 2:
+		var rg: Dictionary = m["ranged"]
+		if dist <= int(rg["range"]):
+			_monster_attack_rolls(m, 1, int(rg["atk"]), rg["dmg"], "phys", "shoots")
+			return true
+	return false
+
+
+## A spell that forces the hero to make a saving throw.
+func _monster_save_spell(m: Dictionary, sp: Dictionary) -> void:
+	var dice: Array = sp["dmg"]
+	var dmg := roll(dice[0], dice[1]) + int(dice[2])
+	var ab: String = sp["ability"]
+	var dc: int = sp["dc"]
+	var res := _hero_save_damage(ab, dc, dmg, bool(sp.get("half", false)))
+	var dealt: int = res[0]
+	var saved: bool = res[1]
+	say("The %s casts %s: you %s the %s save (DC %d) and take %d %s." % [
+		m["name"], sp["name"], "make" if saved else "fail", ab.to_upper(), dc, dealt, sp["dtype"]])
+	if not saved:
+		match String(sp.get("effect", "")):
+			"poison":
+				hero["poisoned"] = maxi(int(hero.get("poisoned", 0)), 2)
+				say("[color=#9be04f]You are Poisoned (Disadvantage on attacks).[/color]")
+			"push":
+				_push_hero(m["pos"], 2)
+	if dealt > 0:
+		_hurt_hero(dealt, "the %s's %s" % [m["name"], sp["name"]])
+
+
+## Returns [damage taken, saved]. Rogue Evasion (level 7) improves DEX saves.
+func _hero_save_damage(ability: String, dc: int, dmg: int, half: bool) -> Array:
+	var saved := _hero_save(ability) >= dc
+	if ability == "dex" and hero["cls"] == "Rogue" and int(hero["level"]) >= 7 and half:
+		return [0 if saved else dmg / 2, saved]
+	if saved:
+		return [dmg / 2 if half else 0, true]
+	return [dmg, false]
+
+
+func _wounded_ally(m: Dictionary, rng_sq: int):
+	var best = null
+	var best_frac := 0.6  # only heal allies below 60% HP
+	for o in monsters:
+		if o["hp"] <= 0 or _cheb(o["pos"], m["pos"]) > rng_sq:
+			continue
+		var frac: float = float(o["hp"]) / float(o["hp_max"])
+		if frac < best_frac:
+			best_frac = frac
+			best = o
+	return best
+
+
+func _push_hero(from: Vector2i, steps: int) -> void:
+	for _i in steps:
+		var hp: Vector2i = hero["pos"]
+		var dir := Vector2i(signi(hp.x - from.x), signi(hp.y - from.y))
+		var q := hp + dir
+		if dir == Vector2i.ZERO or not _can_step(hp, dir) or monster_at(q) != null:
+			break
+		hero["pos"] = q
+	travel.clear()
 
 
 func _monster_move(m: Dictionary) -> void:
