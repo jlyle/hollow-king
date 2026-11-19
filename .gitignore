@@ -9,3 +9,4 @@ export_credentials.cfg
 *.keystore
 *.jks
 builds/
+*.idsig

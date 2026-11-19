@@ -165,7 +165,9 @@ const SECTIONS = [
     ["ST-53", "R-16", "both", "In Tiles mode: target, wound, ensnare and turn monsters.", "Yellow frame, health bar, green tint (Restrained) and dimming (Turned) still show."],
   ]},
   { title: "10. Android build", items: [
-    ["ST-54", "C-01", "android", "Check the export preset before building.", "AAB format, Gradle build on, Target SDK 36, Vibrate permission ticked."],
+    ["ST-54", "D-13", "android", "Run tools/android.sh check.", "Every line OK (Godot, Java 17, SDK packages incl. android-36, export templates)."],
+    ["ST-64", "D-13", "android", "Run tools/android.sh debug with the phone on USB.", "APK builds, installs and launches; the hero icon shows in the app drawer with the name Hollow King."],
+    ["ST-65", "C-01", "android", "Run tools/android.sh release (after creating the keystore).", "builds/hollow-king.aab is created; target SDK 36; no signing errors."],
     ["ST-55", "R-01", "android", "Install and play 10 minutes on a real phone.", "No crashes; text readable; buttons easy to hit; no part of the UI under the notch/status bar."],
     ["ST-56", "R-01", "android", "Rotate the phone.", "Game stays in portrait."],
   ]},
