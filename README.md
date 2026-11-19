@@ -8,7 +8,7 @@ A turn-based ASCII roguelike for Android, built in **Godot 4.5+**. You control o
 2. Project Manager → **Import** → pick this folder's `project.godot`.
 3. Press **F5**. The window is phone-shaped (720×1280, portrait). The mouse works like a finger.
 
-Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E Fire Bolt.
+Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E Fire Bolt, ? or F1 opens the Controls screen.
 
 ## What's in the starter
 
@@ -22,7 +22,7 @@ Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, 
 | **Enemies** | 16 SRD-style monsters (Giant Rat → Hill Giant) plus an original boss. Pack Tactics, Undead Fortitude, Troll regeneration (fire stops it), boss raises skeletons. |
 | **Rests** | Taking the stairs is a Short Rest (spend Hit Dice). Arriving on floors 5, 9, 13, 17 and 20 gives a Long Rest. |
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
-| **Phone UX** | Tap to move/attack, tap far away to auto-walk (stops when enemies appear), tap yourself to wait or descend. Big buttons. Portrait. |
+| **Phone UX** | Tap to move/attack, tap far away to auto-walk (stops when enemies appear), tap yourself to wait or descend. Big buttons. Portrait. In-game **Controls** screen (button, ?/F1, or Android Back) lists every tap, key and map symbol. |
 
 ### Class features implemented
 - **Fighter**: Defense style (AC 19), Second Wind (bonus action, 2/3/4 uses), Extra Attack at 5, 11, 20.

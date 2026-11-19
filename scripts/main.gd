@@ -6,12 +6,37 @@ const MapView := preload("res://scripts/map_view.gd")
 ## Required CC-BY-4.0 attribution for SRD 5.2.1 content. Keep this in-game and on the store listing.
 const ATTRIBUTION := "This work includes material from the System Reference Document 5.2.1 (\"SRD 5.2.1\") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode."
 
-const HELP := [
-	"Tap a neighbouring square to move or attack (diagonals too).",
-	"Tap a distant explored square to auto-walk; it stops when enemies appear.",
-	"Tap yourself to wait, or to descend when standing on >.",
-	"Wizards: tap a visible enemy to cast Fire Bolt.",
-	"@ you  > stairs  ! potion  $ gold  / weapon  [ armor  ~ water/lava",
+## Rows for the Controls screen: [left column, right column]. A row with "" on the right is a section heading.
+const CONTROLS := [
+	["TOUCH", ""],
+	["Tap a neighbouring square", "Move / attack (diagonals too)"],
+	["Tap a far explored square", "Auto-walk (stops when enemies appear)"],
+	["Tap yourself", "Wait, or descend when on >"],
+	["Tap a visible enemy", "Wizard: Fire Bolt. Others: step toward it"],
+	["Buttons", "Wait, Potion, Ability, Fire Bolt, Descend"],
+	["KEYBOARD", ""],
+	["Arrows / WASD / HJKL", "Move or attack"],
+	["Y  U  B  N", "Move diagonally"],
+	["Numpad 1-9", "Move (8 directions)"],
+	["Space  .  Numpad 5", "Wait a turn"],
+	["Enter", "Descend stairs"],
+	["Q", "Drink potion (Bonus Action)"],
+	["F", "Class ability: Second Wind / Hide / Magic Missile"],
+	["E", "Fire Bolt at nearest enemy (Wizard)"],
+	["?  or  F1", "Open / close this screen"],
+	["Esc", "Close this screen"],
+	["MAP SYMBOLS", ""],
+	["@", "You (faded = hidden)"],
+	[">", "Stairs down"],
+	["!", "Potion (pink = Greater Healing)"],
+	["$", "Gold"],
+	["/   [", "Better weapon / armor"],
+	["#", "Wall"],
+	["~", "Water (blue, walkable) / Lava (red, blocks)"],
+	["letters", "Monsters (red bar = wounded)"],
+	["RULES", ""],
+	["Bonus Action", "Potion, Second Wind, Hide: one per turn, doesn't end your turn"],
+	["Stairs", "Short Rest. Floors 5, 9, 13, 17, 20 give a Long Rest"],
 ]
 
 var game: Game
@@ -32,6 +57,7 @@ var btn_ability: Button
 var btn_bolt: Button
 var btn_descend: Button
 var btn_help: Button
+var controls_panel: Control
 var travel_timer: Timer
 
 
@@ -46,6 +72,9 @@ func _ready() -> void:
 	_build_title()
 	_build_game()
 	_build_overlay()
+	_build_controls()
+	# Let the Android back button close the Controls screen instead of quitting.
+	get_tree().quit_on_go_back = false
 	travel_timer = Timer.new()
 	travel_timer.wait_time = 0.07
 	travel_timer.timeout.connect(_on_travel_tick)
@@ -130,8 +159,14 @@ func _build_title() -> void:
 		sp_row.add_child(b)
 
 	desc_label = _label("", 21, Color(0.8, 0.8, 0.85))
-	desc_label.custom_minimum_size = Vector2(0, 200)
+	desc_label.custom_minimum_size = Vector2(0, 170)
 	v.add_child(desc_label)
+
+	var ctl := Button.new()
+	ctl.text = "Controls"
+	ctl.custom_minimum_size = Vector2(0, 72)
+	ctl.pressed.connect(_show_controls)
+	v.add_child(ctl)
 
 	var start := Button.new()
 	start.text = "Descend"
@@ -175,7 +210,7 @@ func _build_game() -> void:
 	btn_ability = _action_button(grid, "Ability", _on_ability)
 	btn_bolt = _action_button(grid, "Fire Bolt", _on_bolt)
 	btn_descend = _action_button(grid, "Descend >", _on_descend)
-	btn_help = _action_button(grid, "Help", _on_help)
+	btn_help = _action_button(grid, "Controls ?", _show_controls)
 
 
 func _build_overlay() -> void:
@@ -200,6 +235,88 @@ func _build_overlay() -> void:
 	again.custom_minimum_size = Vector2(0, 96)
 	again.pressed.connect(_show_title)
 	v.add_child(again)
+
+
+func _build_controls() -> void:
+	var panel := ColorRect.new()
+	panel.color = Color(0.03, 0.03, 0.05, 0.97)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP  # blocks taps reaching the map
+	add_child(panel)
+	controls_panel = panel
+
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.add_theme_constant_override("margin_left", 24)
+	m.add_theme_constant_override("margin_right", 24)
+	m.add_theme_constant_override("margin_top", 48)
+	m.add_theme_constant_override("margin_bottom", 28)
+	panel.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	m.add_child(v)
+
+	var title := _label("CONTROLS", 40, Color("e8c170"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(title)
+
+	var text := RichTextLabel.new()
+	text.bbcode_enabled = true
+	text.scroll_active = true
+	text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text.add_theme_font_size_override("normal_font_size", 21)
+	text.add_theme_font_size_override("bold_font_size", 22)
+	text.add_theme_constant_override("table_v_separation", 6)
+	text.add_theme_constant_override("table_h_separation", 18)
+	var bb := "[table=2]"
+	for row in CONTROLS:
+		var left: String = row[0]
+		var right: String = row[1]
+		if right == "":
+			bb += "[cell][b][color=#e8c170]\n%s[/color][/b][/cell][cell] [/cell]" % _esc(left)
+		else:
+			bb += "[cell expand=2][color=#ffd75e]%s[/color][/cell][cell expand=3]%s[/cell]" % [_esc(left), _esc(right)]
+	bb += "[/table]"
+	text.text = bb
+	v.add_child(text)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.custom_minimum_size = Vector2(0, 96)
+	close.pressed.connect(_hide_controls)
+	v.add_child(close)
+	panel.hide()
+
+
+## Escapes "[" so map symbols like "[" aren't read as BBCode tags.
+func _esc(s: String) -> String:
+	return s.replace("[", "[lb]")
+
+
+func _show_controls() -> void:
+	_stop_travel()
+	controls_panel.show()
+
+
+func _hide_controls() -> void:
+	controls_panel.hide()
+
+
+func _toggle_controls() -> void:
+	if controls_panel.visible:
+		_hide_controls()
+	else:
+		_show_controls()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if controls_panel and controls_panel.visible:
+			_hide_controls()
+		elif game_screen and game_screen.visible and not (game and game.over):
+			_show_controls()  # back button = pause screen, not an accidental quit
+		else:
+			get_tree().quit()
 
 
 # --- Screens -----------------------------------------------------------------------
@@ -330,10 +447,20 @@ func _stop_travel() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if game == null or game.over or not game_screen.visible:
-		return
 	var key := event as InputEventKey
-	if key == null or not key.pressed:
+	if key == null or not key.pressed or key.echo:
+		return
+	# Controls screen works from anywhere and pauses the game while open.
+	if key.keycode in [KEY_F1, KEY_SLASH, KEY_QUESTION]:
+		_toggle_controls()
+		get_viewport().set_input_as_handled()
+		return
+	if controls_panel.visible:
+		if key.keycode in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
+			_hide_controls()
+		get_viewport().set_input_as_handled()
+		return
+	if game == null or game.over or not game_screen.visible:
 		return
 	var dir := Vector2i.ZERO
 	match key.keycode:
@@ -405,8 +532,3 @@ func _on_descend() -> void:
 	game.player_descend()
 	_refresh()
 
-
-func _on_help() -> void:
-	for line in HELP:
-		game.say(line)
-	_refresh()
