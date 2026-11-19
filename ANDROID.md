@@ -17,20 +17,18 @@ If Godot is a Flatpak, prefix commands with `GODOT="flatpak run org.godotengine.
 ## 1. Godot
 You already have it. Confirm: `godot --version` → `4.5…` or newer (this guide is checked against 4.7).
 
-## 2. Java (17 recommended, newer works)
-Godot 4.7 accepts JDK 17 or newer and recommends 17. Easiest on Fedora is the system JDK:
-```bash
-sudo dnf install java-21-openjdk-devel        # or java-latest-openjdk-devel
-```
-Prefer exactly 17? Try `sudo dnf install java-17-openjdk-devel`; if dnf says "No match" (newer Fedora moved older JDKs to Adoptium Temurin):
+## 2. Java 17 (Adoptium Temurin)
+Godot recommends JDK 17 (newer is accepted, but 17 is safest for the Gradle release build).
+Current Fedora releases no longer package JDK 17 or 21 themselves; Fedora provides Adoptium Temurin instead:
 ```bash
 sudo dnf install adoptium-temurin-java-repository
 sudo dnf config-manager setopt adoptium-temurin-java-repository.enabled=1
 sudo dnf install temurin-17-jdk
+ls /usr/lib/jvm/                      # expect temurin-17-jdk
 ```
-Find the install folder with `ls /usr/lib/jvm/` and add it to `~/.bashrc`:
+Add to `~/.bashrc`, then `source ~/.bashrc` and check with `"$JAVA_HOME/bin/java" -version`:
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk    # or temurin-17-jdk / java-17-openjdk
+export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk
 ```
 
 ## 3. Android SDK (command-line tools, no Android Studio needed)
