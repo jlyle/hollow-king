@@ -30,16 +30,19 @@ check() {
 	else
 		bad "Godot not found. Install it or set GODOT=... (see ANDROID.md step 1)"
 	fi
-	if command -v java >/dev/null && java -version 2>&1 | grep -q '"17\.'; then
-		ok "Java 17 ($(command -v java))"
-	elif [ -n "${JAVA_HOME:-}" ] && "$JAVA_HOME/bin/java" -version 2>&1 | grep -q '"17\.'; then
-		ok "Java 17 via JAVA_HOME=$JAVA_HOME"
+	local jbin="" jver=""
+	if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then jbin="$JAVA_HOME/bin/java"; elif command -v java >/dev/null; then jbin="$(command -v java)"; fi
+	[ -n "$jbin" ] && jver="$("$jbin" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+)[^"]*".*/\1/')"
+	if [ "$jver" = "17" ]; then
+		ok "Java 17 ($jbin)"
+	elif [ -n "$jver" ] && [ "$jver" -gt 17 ] 2>/dev/null; then
+		ok "Java $jver ($jbin) - newer than 17 is supported; 17 is Godot's recommendation"
 	else
-		bad "Java 17 not found as 'java' or in JAVA_HOME (ANDROID.md step 2)"
+		bad "Java 17 or newer not found in JAVA_HOME or PATH (ANDROID.md step 2)"
 	fi
 	if [ -n "${ANDROID_HOME:-}" ] && [ -x "$ANDROID_HOME/platform-tools/adb" ]; then
 		ok "Android SDK at ANDROID_HOME=$ANDROID_HOME"
-		for p in "build-tools/35.0.0" "platforms/android-35" "platforms/android-36" "ndk/28.1.13356709" "cmake/3.10.2.4988404"; do
+		for p in "build-tools/35.0.1" "platforms/android-35" "platforms/android-36" "ndk/28.1.13356709" "cmake/3.10.2.4988404"; do
 			if [ -d "$ANDROID_HOME/$p" ]; then ok "  SDK package $p"; else bad "  SDK package $p missing (ANDROID.md step 3)"; fi
 		done
 	else

@@ -15,14 +15,14 @@ If Godot is a Flatpak, prefix commands with `GODOT="flatpak run org.godotengine.
 ---
 
 ## 1. Godot
-You already have it. Confirm: `godot --version` → `4.5…` or newer.
+You already have it. Confirm: `godot --version` → `4.5…` or newer (this guide is checked against 4.7).
 
-## 2. Java 17 (exactly 17)
-Try the Fedora package first:
+## 2. Java (17 recommended, newer works)
+Godot 4.7 accepts JDK 17 or newer and recommends 17. Easiest on Fedora is the system JDK:
 ```bash
-sudo dnf install java-17-openjdk-devel
+sudo dnf install java-21-openjdk-devel        # or java-latest-openjdk-devel
 ```
-If dnf says "No match" (newer Fedora releases moved older JDKs to Adoptium Temurin):
+Prefer exactly 17? Try `sudo dnf install java-17-openjdk-devel`; if dnf says "No match" (newer Fedora moved older JDKs to Adoptium Temurin):
 ```bash
 sudo dnf install adoptium-temurin-java-repository
 sudo dnf config-manager setopt adoptium-temurin-java-repository.enabled=1
@@ -30,7 +30,7 @@ sudo dnf install temurin-17-jdk
 ```
 Find the install folder with `ls /usr/lib/jvm/` and add it to `~/.bashrc`:
 ```bash
-export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk      # or /usr/lib/jvm/java-17-openjdk
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk    # or temurin-17-jdk / java-17-openjdk
 ```
 
 ## 3. Android SDK (command-line tools, no Android Studio needed)
@@ -49,16 +49,25 @@ mv cmdline-tools latest
 export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
 ```
-4. Install the packages Godot 4.5 needs (plus API 36, which Google Play requires — C-01):
+4. Install the packages Godot 4.7 needs (plus API 36, which Google Play requires — C-01):
 ```bash
 sdkmanager --licenses
-sdkmanager "platform-tools" "build-tools;35.0.0" "platforms;android-35" "platforms;android-36" \
+sdkmanager "platform-tools" "build-tools;35.0.1" "platforms;android-35" "platforms;android-36" \
            "cmdline-tools;latest" "cmake;3.10.2.4988404" "ndk;28.1.13356709"
 ```
-If you're on a newer Godot than 4.5, check its "Exporting for Android" docs page for updated version numbers.
+Godot 4.5 used `build-tools;35.0.0`; 4.7 uses `35.0.1`. On another version, check its "Exporting for Android" docs page.
 
 ## 4. Godot export templates
-Easiest: `godot -e --path ~/hollow-king`, then **Editor → Manage Export Templates → Download and Install**.
+Easiest: `godot -e --path ~/git/hollow-king`, then **Editor → Manage Export Templates → Download and Install**.
+
+If the download button is greyed out (can happen with distro-built Godot such as Fedora's), install them by hand. Templates must match your exact version (`godot --version`, e.g. 4.7.1):
+1. From https://godotengine.org/download/archive/ open your version and download **Export templates** (`Godot_v4.7.1-stable_export_templates.tpz`).
+2. Unpack:
+```bash
+mkdir -p ~/.local/share/godot/export_templates/4.7.1.stable
+cd /tmp && unzip ~/Downloads/Godot_v4.7.1-stable_export_templates.tpz
+mv /tmp/templates/* ~/.local/share/godot/export_templates/4.7.1.stable/
+```
 
 ## 5. Point Godot at Java and the SDK (once)
 In the editor: **Editor → Editor Settings → Export → Android**
@@ -74,7 +83,7 @@ Close the editor. Command-line builds read these settings.
 
 Now run:
 ```bash
-cd ~/hollow-king
+cd ~/git/hollow-king
 tools/android.sh check
 ```
 Fix anything marked **FIX**, then run it again until it says **All set**.
