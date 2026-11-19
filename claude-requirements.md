@@ -242,3 +242,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | R-18, D-11: title screen redesign; C-04 updated (attribution moved to a Credits screen); desktop window phone-shaped. |
 | 2026-11-19 | R-19: pause menu (Resume / Controls / Settings / Save & return / Save & quit), Quit on title, Esc/Back open the menu. |
 | 2026-11-19 | B-09 started: export presets, launcher/store icons, `tools/android.sh`, `ANDROID.md`; D-12, D-13, C-10, C-11 added. |
+| 2026-11-19 | D-13: enabled ETC2/ASTC texture import in `project.godot` (required by Godot for Android export). |
