@@ -12,7 +12,7 @@ const CONTROLS := [
 	["Tap a neighbouring square", "Move / attack (diagonals too)"],
 	["Tap a far explored square", "Auto-walk (stops when enemies appear)"],
 	["Tap yourself", "Wait, or descend when on >"],
-	["Tap a visible enemy", "Wizard: Fire Bolt. Others: step toward it"],
+	["Tap a visible enemy", "Select it. Wizard/Cleric/Ranger also attack at range; others step toward it"],
 	["Buttons", "Wait, Potion, Ability, Fire Bolt, Descend"],
 	["KEYBOARD", ""],
 	["Arrows / WASD / HJKL", "Move or attack"],
@@ -21,8 +21,9 @@ const CONTROLS := [
 	["Space  .  Numpad 5", "Wait a turn"],
 	["Enter", "Descend stairs"],
 	["Q", "Drink potion (Bonus Action)"],
-	["F", "Class ability: Second Wind / Hide / Magic Missile"],
-	["E", "Fire Bolt at nearest enemy (Wizard)"],
+	["F", "Class ability (see CLASS BUTTONS)"],
+	["E", "Ranged attack: Fire Bolt / Sacred Flame / Longbow"],
+	["R", "Spells menu (casters) / Reckless toggle (Barbarian)"],
 	["?  or  F1", "Open / close this screen"],
 	["Esc", "Close this screen"],
 	["MAP SYMBOLS", ""],
@@ -34,7 +35,17 @@ const CONTROLS := [
 	["#", "Wall"],
 	["~", "Water (blue, walkable) / Lava (red, blocks)"],
 	["letters", "Monsters (red bar = wounded)"],
+	["CLASS BUTTONS", ""],
+	["Fighter", "Ability: Second Wind"],
+	["Rogue", "Ability: Hide"],
+	["Barbarian", "Ability: Rage. 2nd button: Reckless on/off"],
+	["Ranger", "Ability: Hunter's Mark. Ranged: Longbow. Spells menu"],
+	["Wizard", "Ability: Magic Missile. Ranged: Fire Bolt. Spells menu"],
+	["Cleric", "Ability: Healing Word. Ranged: Sacred Flame. Spells menu"],
+	["Target frame", "Yellow box = selected target; spells aim at it"],
 	["RULES", ""],
+	["Saving throws", "Save spells roll d20 + the monster's save bonus vs your spell DC"],
+	["Concentration", "One at a time; taking damage forces a CON save"],
 	["Bonus Action", "Potion, Second Wind, Hide: one per turn, doesn't end your turn"],
 	["Stairs", "Short Rest. Floors 5, 9, 13, 17, 20 give a Long Rest"],
 ]
@@ -54,7 +65,11 @@ var map_view: MapView
 var btn_wait: Button
 var btn_potion: Button
 var btn_ability: Button
-var btn_bolt: Button
+var btn_ranged: Button
+var btn_spells: Button
+var spells_panel: Control
+var spells_list: VBoxContainer
+var spells_header: Label
 var btn_descend: Button
 var btn_help: Button
 var controls_panel: Control
@@ -74,6 +89,7 @@ func _ready() -> void:
 	_build_title()
 	_build_game()
 	_build_overlay()
+	_build_spells()
 	_build_controls()
 	# Let the Android back button close the Controls screen instead of quitting.
 	get_tree().quit_on_go_back = false
@@ -112,7 +128,7 @@ func _choice_button(text: String, group: ButtonGroup, pressed: bool) -> Button:
 	b.toggle_mode = true
 	b.button_group = group
 	b.button_pressed = pressed
-	b.custom_minimum_size = Vector2(0, 76)
+	b.custom_minimum_size = Vector2(0, 64)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return b
 
@@ -120,9 +136,10 @@ func _choice_button(text: String, group: ButtonGroup, pressed: bool) -> Button:
 func _action_button(parent: Control, text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 88)
+	b.custom_minimum_size = Vector2(0, 80)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.add_theme_font_size_override("font_size", 22)
+	b.clip_text = true
+	b.add_theme_font_size_override("font_size", 19)
 	b.pressed.connect(cb)
 	parent.add_child(b)
 	return b
@@ -135,7 +152,7 @@ func _build_title() -> void:
 	v.add_theme_constant_override("separation", 16)
 	title_screen.add_child(v)
 
-	var t := _label("DEPTHS OF THE\nHOLLOW KING", 54, Color("e8c170"))
+	var t := _label("DEPTHS OF THE\nHOLLOW KING", 46, Color("e8c170"))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	var sub := _label("20 floors. One hero. A new dungeon every run.", 22, Color(0.7, 0.7, 0.75))
@@ -143,7 +160,10 @@ func _build_title() -> void:
 	v.add_child(sub)
 
 	v.add_child(_label("Class", 24, Color(0.85, 0.85, 0.9)))
-	var cls_row := HBoxContainer.new()
+	var cls_row := GridContainer.new()
+	cls_row.columns = 3
+	cls_row.add_theme_constant_override("h_separation", 6)
+	cls_row.add_theme_constant_override("v_separation", 6)
 	v.add_child(cls_row)
 	var cg := ButtonGroup.new()
 	for c in GameData.CLASSES.keys():
@@ -161,7 +181,7 @@ func _build_title() -> void:
 		sp_row.add_child(b)
 
 	desc_label = _label("", 21, Color(0.8, 0.8, 0.85))
-	desc_label.custom_minimum_size = Vector2(0, 170)
+	desc_label.custom_minimum_size = Vector2(0, 150)
 	v.add_child(desc_label)
 
 	var ctl := Button.new()
@@ -209,14 +229,15 @@ func _build_game() -> void:
 	v.add_child(map_view)
 
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	v.add_child(grid)
 	btn_wait = _action_button(grid, "Wait", _on_wait)
 	btn_potion = _action_button(grid, "Potion", _on_potion)
 	btn_ability = _action_button(grid, "Ability", _on_ability)
-	btn_bolt = _action_button(grid, "Fire Bolt", _on_bolt)
+	btn_ranged = _action_button(grid, "Ranged", _on_ranged)
+	btn_spells = _action_button(grid, "Spells", _on_spells)
 	btn_descend = _action_button(grid, "Descend >", _on_descend)
 	btn_help = _action_button(grid, "Controls ?", _show_controls)
 
@@ -325,6 +346,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if controls_panel and controls_panel.visible:
 			_hide_controls()
+		elif spells_panel and spells_panel.visible:
+			_hide_spells()
 		elif game_screen and game_screen.visible and not (game and game.over):
 			_show_controls()  # back button = pause screen, not an accidental quit
 		else:
@@ -396,27 +419,48 @@ func _refresh() -> void:
 	game.save_run()  # R-09: autosave after every action (deletes the save once the run is over)
 	var hd: Dictionary = game.hero
 	var nxt := game.xp_next()
-	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d%s" % [
+	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d\n%s" % [
 		game.floor_num, Game.MAX_FLOOR, game.floor_theme["name"],
 		hd["species"], hd["cls"], hd["level"], hd["hp"], hd["hp_max"], game.hero_ac(),
-		hd["xp"], (str(nxt) if nxt > 0 else "max"), hd["gold"],
-		"  [HIDDEN]" if hd["hidden"] else ""]
+		hd["xp"], (str(nxt) if nxt > 0 else "max"), hd["gold"], game.status_extra()]
 	log_label.text = "\n".join(PackedStringArray(game.log_lines))
 
 	var pots: int = hd["potions"] + hd["greater"]
 	btn_potion.text = "Potion (%d)" % pots
 	btn_potion.disabled = pots == 0 or game.bonus_used
+	var lvl: int = hd["level"]
 	match hd["cls"]:
 		"Fighter":
-			btn_ability.text = "Second Wind (%d)" % hd["second_wind"]
+			btn_ability.text = "2nd Wind (%d)" % hd["second_wind"]
 			btn_ability.disabled = hd["second_wind"] <= 0 or game.bonus_used
 		"Rogue":
 			btn_ability.text = "Hidden" if hd["hidden"] else "Hide"
 			btn_ability.disabled = hd["hidden"] or game.bonus_used
+		"Barbarian":
+			btn_ability.text = ("Raging %d" % hd["rage"]) if int(hd["rage"]) > 0 else ("Rage (%d)" % hd["rage_uses"])
+			btn_ability.disabled = int(hd["rage"]) > 0 or int(hd["rage_uses"]) <= 0 or game.bonus_used
 		"Wizard":
-			btn_ability.text = "Magic Missile (%d)" % hd["slots"]
-			btn_ability.disabled = hd["slots"] <= 0
-	btn_bolt.visible = hd["cls"] == "Wizard"
+			btn_ability.text = "M. Missile"
+			btn_ability.disabled = game.cannot_cast("magic_missile") != ""
+		"Cleric":
+			btn_ability.text = "Heal Word"
+			btn_ability.disabled = game.cannot_cast("healing_word") != ""
+		"Ranger":
+			btn_ability.text = "Mark (%d)" % hd["hm_free"]
+			btn_ability.disabled = game.cannot_cast("hunters_mark") != ""
+	var ranged_names := {"fire_bolt": "Fire Bolt", "sacred_flame": "Sac. Flame", "longbow": "Longbow"}
+	var rk: String = GameData.CLASSES[hd["cls"]]["ranged"]
+	btn_ranged.visible = rk != ""
+	btn_ranged.text = ranged_names.get(rk, "Ranged")
+	btn_ranged.disabled = not game.any_monster_visible()
+	if hd["cls"] == "Barbarian":
+		btn_spells.visible = true
+		btn_spells.text = "Reckless " + ("ON" if hd["reckless"] else "off") if lvl >= 2 else "Reckless L2"
+		btn_spells.disabled = lvl < 2
+	else:
+		btn_spells.visible = game.is_caster()
+		btn_spells.text = "Spells (%d)" % hd["slots"]
+		btn_spells.disabled = false
 	btn_descend.disabled = not game.on_stairs()
 	map_view.queue_redraw()
 
@@ -426,7 +470,7 @@ func _refresh() -> void:
 			overlay_label.text = "VICTORY\n\nThe Hollow King is dust.\n\nLevel %d %s %s\n%d kills - %d gold\nSeed %d" % [
 				hd["level"], hd["species"], hd["cls"], hd["kills"], hd["gold"], game.seed_value]
 		else:
-			overlay_label.text = "YOU DIED\n\nSlain by a %s\non floor %d (%s).\n\nLevel %d %s %s\n%d kills - %d gold\nSeed %d" % [
+			overlay_label.text = "YOU DIED\n\nSlain by %s\non floor %d (%s).\n\nLevel %d %s %s\n%d kills - %d gold\nSeed %d" % [
 				game.death_cause, game.floor_num, game.floor_theme["name"],
 				hd["level"], hd["species"], hd["cls"], hd["kills"], hd["gold"], game.seed_value]
 		overlay.show()
@@ -449,8 +493,10 @@ func _on_cell_tapped(c: Vector2i) -> void:
 		game.player_step(d)
 	else:
 		var m = game.visible_monster_at(c)
-		if m != null and game.hero["cls"] == "Wizard":
-			game.player_firebolt(m)
+		if m != null:
+			game.set_target(m)
+		if m != null and game.has_ranged():
+			game.player_ranged(m)
 		elif m != null:
 			game.describe(m)
 			game.player_step_toward(c)
@@ -496,6 +542,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_hide_controls()
 		get_viewport().set_input_as_handled()
 		return
+	if spells_panel.visible:
+		if key.keycode in [KEY_ESCAPE, KEY_R]:
+			_hide_spells()
+		get_viewport().set_input_as_handled()
+		return
 	if game == null or game.over or not game_screen.visible:
 		return
 	var dir := Vector2i.ZERO
@@ -529,7 +580,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_ability()
 			return
 		KEY_E:
-			_on_bolt()
+			_on_ranged()
+			return
+		KEY_R:
+			_on_spells()
 			return
 		_:
 			return
@@ -557,9 +611,92 @@ func _on_ability() -> void:
 	_refresh()
 
 
-func _on_bolt() -> void:
+func _on_ranged() -> void:
 	_stop_travel()
-	game.player_firebolt(null)
+	game.player_ranged(null)
+	_refresh()
+
+
+## Casters open the spell menu; Barbarians toggle Reckless Attack.
+func _on_spells() -> void:
+	_stop_travel()
+	if game.hero["cls"] == "Barbarian":
+		game.toggle_reckless()
+		_refresh()
+	elif game.is_caster():
+		_show_spells()
+
+
+# --- Spell menu (R-11) -------------------------------------------------------------
+
+func _build_spells() -> void:
+	var panel := ColorRect.new()
+	panel.color = Color(0.03, 0.03, 0.05, 0.97)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(panel)
+	spells_panel = panel
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.add_theme_constant_override("margin_left", 24)
+	m.add_theme_constant_override("margin_right", 24)
+	m.add_theme_constant_override("margin_top", 48)
+	m.add_theme_constant_override("margin_bottom", 28)
+	panel.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	m.add_child(v)
+	var title := _label("SPELLS", 40, Color("e8c170"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(title)
+	spells_header = _label("", 21, Color(0.8, 0.8, 0.85))
+	spells_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(spells_header)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	spells_list = VBoxContainer.new()
+	spells_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spells_list.add_theme_constant_override("separation", 10)
+	scroll.add_child(spells_list)
+	var close := Button.new()
+	close.text = "Cancel"
+	close.custom_minimum_size = Vector2(0, 88)
+	close.pressed.connect(_hide_spells)
+	v.add_child(close)
+	panel.hide()
+
+
+func _show_spells() -> void:
+	for child in spells_list.get_children():
+		child.queue_free()
+	var hd: Dictionary = game.hero
+	var tgt = game.target
+	var tname: String = tgt["name"] if tgt != null else "nearest enemy"
+	spells_header.text = "Slots %d/%d  -  Spell DC %d  -  Target: %s" % [hd["slots"], game.max_slots(), game.spell_dc(), tname]
+	for sp in game.available_spells():
+		var b := Button.new()
+		var why: String = sp["why"]
+		b.text = "%s   [%s]\n%s%s" % [sp["name"], sp["cost"], sp["desc"], ("\n> " + why) if why != "" else ""]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.custom_minimum_size = Vector2(0, 110)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 19)
+		b.disabled = why != ""
+		b.pressed.connect(_cast_from_menu.bind(String(sp["key"])))
+		spells_list.add_child(b)
+	spells_panel.show()
+
+
+func _hide_spells() -> void:
+	spells_panel.hide()
+
+
+func _cast_from_menu(key: String) -> void:
+	_hide_spells()
+	game.cast(key)
 	_refresh()
 
 

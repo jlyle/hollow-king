@@ -93,9 +93,19 @@ func _draw() -> void:
 				col = Color("ffd75e")
 				if game.hero["hidden"]:
 					col.a = 0.45
+			if lit and mons.has(p):
+				var mt: Dictionary = mons[p]
+				if mt.get("restrained", false):
+					col = col.lerp(Color("7fc24f"), 0.5)  # vines
+				if int(mt.get("turned", 0)) > 0:
+					col = col.darkened(0.45)  # fleeing
 			if not lit:
 				col = col.darkened(0.6)
 			draw_string(font, cell_pos + Vector2(0, baseline), ch, HORIZONTAL_ALIGNMENT_CENTER, cell, fs, col)
+
+			# Yellow frame around the selected target.
+			if lit and mons.has(p) and game.target != null and is_same(mons[p], game.target):
+				draw_rect(Rect2(cell_pos + Vector2(1, 1), Vector2(cell - 2, cell - 2)), Color("ffd75e"), false, 2.0)
 
 			# Small health bar under wounded, visible monsters.
 			if lit and mons.has(p) and p != hp:

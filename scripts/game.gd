@@ -1,10 +1,11 @@
 class_name Game
 extends RefCounted
 ## Core game state and turn loop. No UI code lives here, so it can be tested headless.
+## claude-requirements.md is the source of truth for the rules implemented here.
 ##
 ## Turn structure (2024 rules, adapted for a grid roguelike):
 ##   - The hero gets one Action per turn (move one square, attack, cast) plus one Bonus Action
-##     (potion, Second Wind, Hide) that does NOT end the turn.
+##     (potion, Second Wind, Hide, Rage, Healing Word, Hunter's Mark...) that does NOT end the turn.
 ##   - Then every awake monster takes its turn.
 
 const MAX_FLOOR := 20
@@ -13,7 +14,19 @@ const LOG_SIZE := 6
 const LONG_REST_FLOORS := [5, 9, 13, 17, 20]   ## Arriving on these floors grants a Long Rest.
 const SAVE_PATH := "user://run.save"   ## R-09: single autosave slot
 const SAVE_TMP := "user://run.save.tmp"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
+
+## Ability indexes for monster saving throws ("sv" arrays).
+const STR := 0
+const DEX := 1
+const CON := 2
+const INT := 3
+const WIS := 4
+const CHA := 5
+
+## Spells that need a visible enemy target.
+const TARGETED := ["fire_bolt", "magic_missile", "burning_hands", "shatter", "fireball",
+	"sacred_flame", "guiding_bolt", "hunters_mark"]
 
 var rng := RandomNumberGenerator.new()
 var seed_value := 0
@@ -34,6 +47,7 @@ var won := false
 var turn := 0
 var log_lines: Array = []
 var travel: Array = []
+var target = null                ## Currently selected enemy (Dictionary) or null
 var bonus_used := false
 var sneak_used := false
 var uncanny_used := false
@@ -65,11 +79,17 @@ func _make_hero(cls: String, species: String) -> void:
 		"pos": Vector2i.ZERO,
 		"potions": 2, "greater": 0, "gold": 0,
 		"weapon_bonus": 0, "armor_bonus": 0,
-		"second_wind": 2, "slots": GameData.WIZARD_SLOTS[0], "arcane_used": false,
+		"second_wind": 0, "slots": 0, "rage_uses": 0, "channel": 0, "hm_free": 0,
+		"arcane_used": false,
 		"hidden": false, "stealth": 0,
+		"rage": 0, "reckless": false,
+		"conc": "", "ensnare_ready": false,
 		"inspiration": species == "Human", "relentless": species == "Orc",
 		"kills": 0,
 	}
+	var pools := _pool_maxes()
+	for k in pools:
+		hero[k] = pools[k]
 	var hp: int = c["hit_die"] + _mod("con") + (1 if species == "Dwarf" else 0)
 	hero["hp_max"] = hp
 	hero["hp"] = hp
@@ -93,8 +113,12 @@ func start_floor(n: int) -> void:
 	monsters.clear()
 	items.clear()
 	travel.clear()
+	target = null
 	hero["pos"] = d["start"]
 	hero["hidden"] = false
+	hero["rage"] = 0
+	hero["conc"] = ""
+	hero["ensnare_ready"] = false
 	_setup_astar()
 	_spawn(d)
 	_compute_fov()
@@ -179,6 +203,10 @@ func _add_monster(md: Dictionary, p: Vector2i) -> Dictionary:
 	m["awake"] = false
 	m["no_regen"] = false
 	m["cd"] = 2
+	m["restrained"] = false
+	m["turned"] = 0
+	m["guided"] = false
+	m["marked"] = false
 	monsters.append(m)
 	return m
 
@@ -245,6 +273,7 @@ func load_run() -> bool:
 	bonus_used = data["bonus_used"]
 	over = false
 	won = false
+	target = null
 	travel.clear()
 	vis = PackedByteArray()
 	vis.resize(w * h)
@@ -321,10 +350,16 @@ func hero_ac() -> int:
 	match hero["cls"]:
 		"Fighter":
 			base = 19  # chain mail 16 + shield 2 + Defense fighting style 1
+		"Cleric":
+			base = 18  # chain mail 16 + shield 2 (Protector)
 		"Rogue":
 			base = 11 + _mod("dex")  # leather armor
+		"Ranger":
+			base = 12 + _mod("dex")  # studded leather
 		"Wizard":
 			base = 13 + _mod("dex")  # Mage Armor
+		"Barbarian":
+			base = 10 + _mod("dex") + _mod("con")  # Unarmored Defense
 	return base + int(hero["armor_bonus"])
 
 
@@ -338,7 +373,81 @@ func xp_next() -> int:
 
 
 func describe(m: Dictionary) -> void:
-	say("%s - AC %d, %s." % [m["name"], m["ac"], _health_word(m)])
+	var tags := ""
+	if m.get("restrained", false):
+		tags += ", restrained"
+	if int(m.get("turned", 0)) > 0:
+		tags += ", turned"
+	if m.get("marked", false):
+		tags += ", marked"
+	say("%s - AC %d, %s%s." % [m["name"], m["ac"], _health_word(m), tags])
+
+
+func set_target(m) -> void:
+	target = m
+
+
+func has_ranged() -> bool:
+	return _cls()["ranged"] != ""
+
+
+func is_caster() -> bool:
+	return _cls()["caster"] != ""
+
+
+func max_slots() -> int:
+	match _cls()["slots"]:
+		"full":
+			return GameData.FULL_CASTER_SLOTS[int(hero["level"]) - 1]
+		"half":
+			return GameData.HALF_CASTER_SLOTS[int(hero["level"]) - 1]
+	return 0
+
+
+func max_spell_level() -> int:
+	var lvl: int = hero["level"]
+	match _cls()["slots"]:
+		"full":
+			return mini(9, ceili(lvl / 2.0))
+		"half":
+			return mini(5, (lvl - 1) / 4 + 1)
+	return 0
+
+
+func spell_dc() -> int:
+	return 8 + _caster_mod() + prof()
+
+
+## Short extra status line for the HUD.
+func status_extra() -> String:
+	var parts: Array = []
+	if is_caster():
+		parts.append("Slots %d/%d" % [hero["slots"], max_slots()])
+		parts.append("DC %d" % spell_dc())
+	if hero["cls"] == "Cleric" and int(hero["level"]) >= 2:
+		parts.append("Channel %d" % hero["channel"])
+	if hero["cls"] == "Barbarian":
+		parts.append("Rage %d left" % hero["rage_uses"])
+		if int(hero["rage"]) > 0:
+			parts.append("RAGING %d" % hero["rage"])
+		if hero["reckless"]:
+			parts.append("Reckless")
+	if hero["conc"] != "":
+		parts.append("Conc: %s" % GameData.SPELLS[hero["conc"]]["name"])
+	if hero["hidden"]:
+		parts.append("HIDDEN")
+	return "  ".join(PackedStringArray(parts))
+
+
+## Every spell of the hero's class, with "why" = "" when castable right now.
+func available_spells() -> Array:
+	var out: Array = []
+	for key in GameData.SPELLS:
+		var sp: Dictionary = GameData.SPELLS[key]
+		if sp["cls"] != hero["cls"]:
+			continue
+		out.append({"key": key, "name": sp["name"], "desc": sp["desc"], "cost": _cost_text(sp, key), "why": cannot_cast(key)})
+	return out
 
 
 # --- Player actions ----------------------------------------------------------------
@@ -353,7 +462,8 @@ func player_step(d: Vector2i) -> bool:
 		return false
 	var m = monster_at(t)
 	if m != null:
-		_hero_melee(m)
+		target = m
+		_hero_attack_action(m, false)
 	else:
 		hero["pos"] = t
 		_pickup()
@@ -363,9 +473,9 @@ func player_step(d: Vector2i) -> bool:
 	return true
 
 
-func player_step_toward(target: Vector2i) -> bool:
+func player_step_toward(dest: Vector2i) -> bool:
 	var from: Vector2i = hero["pos"]
-	var d := Vector2i(signi(target.x - from.x), signi(target.y - from.y))
+	var d := Vector2i(signi(dest.x - from.x), signi(dest.y - from.y))
 	if player_step(d):
 		return true
 	if d.x != 0 and player_step(Vector2i(d.x, 0)):
@@ -381,9 +491,9 @@ func player_wait() -> void:
 	_end_turn()
 
 
-func plan_travel(target: Vector2i) -> void:
+func plan_travel(dest: Vector2i) -> void:
 	travel.clear()
-	var path := astar.get_id_path(hero["pos"], target)
+	var path := astar.get_id_path(hero["pos"], dest)
 	for i in range(1, path.size()):
 		travel.append(path[i])
 
@@ -409,10 +519,11 @@ func player_potion() -> void:
 		hero["potions"] = normal - 1
 		heal = roll(2, 4) + 2
 		say("You drink a Potion of Healing (+%d HP)." % heal)
-	hero["hp"] = mini(hero["hp_max"], hero["hp"] + heal)
+	_heal(heal)
 	bonus_used = true
 
 
+## The class's main button: Second Wind, Hide, Rage, Magic Missile, Healing Word or Hunter's Mark.
 func player_ability() -> void:
 	if over:
 		return
@@ -421,41 +532,40 @@ func player_ability() -> void:
 			_second_wind()
 		"Rogue":
 			_hide()
+		"Barbarian":
+			_rage()
 		"Wizard":
-			_magic_missile()
+			cast("magic_missile")
+		"Cleric":
+			cast("healing_word")
+		"Ranger":
+			cast("hunters_mark")
 
 
-func player_firebolt(target = null) -> void:
-	if over or hero["cls"] != "Wizard":
+## Long-range attack: Fire Bolt (Wizard), Sacred Flame (Cleric) or Longbow (Ranger).
+func player_ranged(pref = null) -> void:
+	if over:
 		return
-	var t = target
-	if t == null:
-		var seen := _visible_monsters_by_distance()
-		if seen.is_empty():
-			say("No visible target for Fire Bolt.")
+	var kind: String = _cls()["ranged"]
+	if kind == "":
+		return
+	if kind == "longbow":
+		var t = _pick_target(pref)
+		if t == null:
+			say("No visible target for your longbow.")
 			return
-		t = seen[0]
-	var adv := 1 if hero["hidden"] else 0
-	if _enemy_adjacent():
-		adv -= 1  # ranged attack with an enemy within 5 ft: Disadvantage
-	hero["hidden"] = false
-	var bonus: int = _mod("int") + prof()
-	var r := _hero_d20(adv)
-	var hit := _is_hit(r, bonus, t["ac"])
-	if not hit and hero["inspiration"]:
-		hero["inspiration"] = false
-		say("Heroic Inspiration - you reroll.")
-		r = _hero_d20(adv)
-		hit = _is_hit(r, bonus, t["ac"])
-	if hit:
-		var lvl: int = hero["level"]
-		var dice := 1 + (1 if lvl >= 5 else 0) + (1 if lvl >= 11 else 0) + (1 if lvl >= 17 else 0)
-		var dmg := roll(dice * (2 if r == 20 else 1), 10)
-		say("Fire Bolt %s the %s for %d fire damage." % ["CRITS" if r == 20 else "hits", t["name"], dmg])
-		_damage_monster(t, dmg, r == 20, "fire")
+		_hero_attack_action(t, true)
+		_end_turn()
 	else:
-		say("Your Fire Bolt misses the %s." % t["name"])
-	_end_turn()
+		cast(kind, pref)
+
+
+func toggle_reckless() -> void:
+	if hero["cls"] != "Barbarian" or int(hero["level"]) < 2:
+		say("Reckless Attack unlocks at Barbarian level 2.")
+		return
+	hero["reckless"] = not hero["reckless"]
+	say("Reckless Attack %s." % ("ON: Advantage on your attacks, enemies get Advantage on you" if hero["reckless"] else "OFF"))
 
 
 func player_descend() -> void:
@@ -472,6 +582,245 @@ func player_descend() -> void:
 	start_floor(next)
 
 
+# --- Spells (R-11) -----------------------------------------------------------------
+
+## Returns "" if the spell can be cast right now, otherwise the reason it can't.
+func cannot_cast(key: String) -> String:
+	if not GameData.SPELLS.has(key):
+		return "Unknown spell."
+	var sp: Dictionary = GameData.SPELLS[key]
+	var lvl: int = sp["lvl"]
+	if sp["cls"] != hero["cls"]:
+		return "Not a %s spell." % hero["cls"]
+	if int(hero["level"]) < int(sp["min"]):
+		return "Requires level %d." % sp["min"]
+	if sp["cast"] == "bonus" and bonus_used:
+		return "Bonus Action already used this turn."
+	if lvl == -1 and int(hero["channel"]) <= 0:
+		return "No Channel Divinity left."
+	if lvl >= 1:
+		var free := key == "hunters_mark" and int(hero["hm_free"]) > 0
+		if not free and int(hero["slots"]) <= 0:
+			return "No spell slots left."
+		if lvl > max_spell_level():
+			return "Needs a level %d slot." % lvl
+	if key in TARGETED:
+		var t = _pick_target(null, false)
+		if t == null:
+			return "No visible target."
+		if key == "burning_hands" and _cheb(t["pos"], hero["pos"]) > 3:
+			return "Target must be within 3 squares."
+	if key == "thunderwave" and not _enemy_adjacent():
+		return "No enemy next to you."
+	if key == "turn_undead" and _undead_in_range().is_empty():
+		return "No undead within 6 squares."
+	return ""
+
+
+func cast(key: String, pref = null) -> void:
+	if over:
+		return
+	if pref != null:
+		target = pref
+	var why := cannot_cast(key)
+	if why != "":
+		say(why)
+		return
+	var sp: Dictionary = GameData.SPELLS[key]
+	var lvl: int = sp["lvl"]
+	var t = _pick_target(pref) if key in TARGETED else null
+	var up := maxi(0, max_spell_level() - lvl) if lvl >= 1 else 0
+	# Pay the cost.
+	if lvl >= 1:
+		if key == "hunters_mark" and int(hero["hm_free"]) > 0:
+			hero["hm_free"] -= 1
+		else:
+			hero["slots"] -= 1
+	elif lvl == -1:
+		hero["channel"] -= 1
+	hero["hidden"] = false
+	var is_bonus: bool = sp["cast"] == "bonus"
+	if is_bonus:
+		bonus_used = true
+	var dc := spell_dc()
+
+	match key:
+		"fire_bolt":
+			_spell_attack(t, "Fire Bolt", roll_spec(_cantrip_dice(), 10), "fire")
+		"guiding_bolt":
+			if _spell_attack(t, "Guiding Bolt", roll_spec(4 + up, 6), "radiant") and t["hp"] > 0:
+				t["guided"] = true
+		"sacred_flame":
+			var d := roll(_cantrip_dice(), 8)
+			if _monster_save(t, DEX, dc):
+				say("The %s dodges the Sacred Flame." % t["name"])
+			else:
+				say("Sacred Flame sears the %s for %d radiant." % [t["name"], d])
+				_damage_monster(t, d, false, "radiant")
+		"magic_missile":
+			var darts := 3 + up
+			say("Magic Missile! %d glowing darts streak out." % darts)
+			var targets := _visible_monsters_by_distance()
+			targets.erase(t)
+			targets.push_front(t)
+			var ti := 0
+			for _i in darts:
+				while ti < targets.size() and targets[ti]["hp"] <= 0:
+					ti += 1
+				if ti >= targets.size():
+					break
+				_damage_monster(targets[ti], roll(1, 4) + 1, false, "force")
+		"burning_hands":
+			var tp: Vector2i = t["pos"]
+			var me: Vector2i = hero["pos"]
+			var dir := Vector2(tp - me).normalized()
+			var hit: Array = []
+			for m in _visible_monsters_by_distance():
+				var mpos: Vector2i = m["pos"]
+				var off: Vector2i = mpos - me
+				if _cheb(m["pos"], hero["pos"]) <= 3 and Vector2(off).normalized().dot(dir) >= 0.7:
+					hit.append(m)
+			_area_save(hit, "Burning Hands", roll(3 + up, 6), "fire", DEX, dc, false)
+		"thunderwave":
+			var hit: Array = []
+			for m in monsters:
+				if m["hp"] > 0 and _cheb(m["pos"], hero["pos"]) <= 1:
+					hit.append(m)
+			_area_save(hit, "Thunderwave", roll(2 + up, 8), "thunder", CON, dc, true)
+		"shatter":
+			_area_save(_monsters_near(t["pos"], 2), "Shatter", roll(3 + up, 8), "thunder", CON, dc, false, t["pos"], 2)
+		"fireball":
+			_area_save(_monsters_near(t["pos"], 4), "Fireball", roll(8 + up, 6), "fire", DEX, dc, false, t["pos"], 4)
+		"healing_word":
+			var amt := roll(2 * (1 + up), 4) + _caster_mod()
+			_heal(amt)
+			say("Healing Word: +%d HP." % amt)
+		"cure_wounds":
+			var amt := roll(2 * (1 + up), 8) + _caster_mod()
+			_heal(amt)
+			say("Cure Wounds: +%d HP." % amt)
+		"turn_undead":
+			var turned := 0
+			for m in _undead_in_range():
+				if not _monster_save(m, WIS, dc):
+					m["turned"] = 10
+					m["awake"] = true
+					turned += 1
+			say("You present your holy symbol. %d undead flee in terror." % turned)
+		"spirit_guardians":
+			_set_conc(key)
+			say("Spectral guardians swirl around you.")
+		"hunters_mark":
+			_set_conc(key)
+			for m in monsters:
+				m["marked"] = false
+			t["marked"] = true
+			say("You mark the %s as your quarry." % t["name"])
+		"ensnaring_strike":
+			_set_conc(key)
+			hero["ensnare_ready"] = true
+			say("Thorny vines coil around your weapon. Your next hit can ensnare.")
+
+	if not is_bonus:
+		_end_turn()
+
+
+## Rolls a ready-made damage number (helper keeps match arms short).
+func roll_spec(count: int, sides: int) -> Array:
+	return [count, sides]
+
+
+## Spell attack roll. Returns true on a hit.
+func _spell_attack(t: Dictionary, sname: String, dice: Array, kind: String) -> bool:
+	var adv := 0
+	var dis := 0
+	if t.get("guided", false):
+		adv += 1
+		t["guided"] = false
+	if t.get("restrained", false):
+		adv += 1
+	if _enemy_adjacent():
+		dis += 1  # ranged attack with an enemy within 5 ft
+	var a := _net_adv(adv, dis)
+	var bonus: int = _caster_mod() + prof()
+	var r := _hero_d20(a)
+	var hit := _is_hit(r, bonus, t["ac"])
+	if not hit and hero["inspiration"]:
+		hero["inspiration"] = false
+		say("Heroic Inspiration - you reroll.")
+		r = _hero_d20(a)
+		hit = _is_hit(r, bonus, t["ac"])
+	if not hit:
+		say("Your %s misses the %s." % [sname, t["name"]])
+		return false
+	var crit := r == 20
+	var dmg := roll(int(dice[0]) * (2 if crit else 1), dice[1])
+	say("%s %s the %s for %d %s." % [sname, "CRITS" if crit else "hits", t["name"], dmg, kind])
+	_damage_monster(t, dmg, crit, kind)
+	return true
+
+
+## Saving-throw damage to a group. Optional center/radius lets the blast catch the hero too.
+func _area_save(targets: Array, sname: String, dmg: int, kind: String, ability: int, dc: int,
+		push: bool, center := Vector2i(-99, -99), radius := 0) -> void:
+	var results: Array = []
+	var saved_list: Array = []
+	for m in targets:
+		var saved := _monster_save(m, ability, dc)
+		saved_list.append(saved)
+		results.append("%s %s" % [m["name"], "saves" if saved else "fails"])
+	var who := ", ".join(PackedStringArray(results)) if not results.is_empty() else "nothing caught"
+	say("%s (%d %s, DC %d): %s." % [sname, dmg, kind, dc, who])
+	for i in targets.size():
+		var m: Dictionary = targets[i]
+		var saved: bool = saved_list[i]
+		if m["hp"] <= 0:
+			continue
+		_damage_monster(m, dmg / 2 if saved else dmg, false, kind)
+		if push and not saved and m["hp"] > 0:
+			_push(m, 2)
+	if radius > 0 and _cheb(center, hero["pos"]) <= radius:
+		var hs := ["str", "dex", "con", "int", "wis", "cha"][ability] as String
+		var self_dmg := dmg / 2 if _hero_save(hs) >= dc else dmg
+		say("[color=#ff9966]You're caught in your own %s![/color]" % sname)
+		_hurt_hero(self_dmg, "your own %s" % sname)
+
+
+func _set_conc(key: String) -> void:
+	if hero["conc"] != "":
+		_end_conc(false)
+	hero["conc"] = key
+
+
+func _end_conc(announce: bool) -> void:
+	var key: String = hero["conc"]
+	if key == "":
+		return
+	match key:
+		"hunters_mark":
+			for m in monsters:
+				m["marked"] = false
+		"ensnaring_strike":
+			hero["ensnare_ready"] = false
+			for m in monsters:
+				m["restrained"] = false
+	hero["conc"] = ""
+	if announce:
+		say("[color=#ff9966]Your concentration breaks: %s ends.[/color]" % GameData.SPELLS[key]["name"])
+
+
+func _cost_text(sp: Dictionary, key: String) -> String:
+	var lvl: int = sp["lvl"]
+	if lvl == 0:
+		return "Cantrip"
+	if lvl == -1:
+		return "Channel Divinity (%d left)" % hero["channel"]
+	if key == "hunters_mark" and int(hero["hm_free"]) > 0:
+		return "Free use (%d left)" % hero["hm_free"]
+	var cast_at := maxi(lvl, max_spell_level())
+	return "1 slot (cast at level %d)" % cast_at
+
+
 # --- Class features ----------------------------------------------------------------
 
 func _second_wind() -> void:
@@ -482,10 +831,10 @@ func _second_wind() -> void:
 		say("Second Wind is spent. Rest to recover it.")
 		return
 	hero["second_wind"] -= 1
-	var heal := roll(1, 10) + int(hero["level"])
-	hero["hp"] = mini(hero["hp_max"], hero["hp"] + heal)
+	var amt := roll(1, 10) + int(hero["level"])
+	_heal(amt)
 	bonus_used = true
-	say("Second Wind! You regain %d HP." % heal)
+	say("Second Wind! You regain %d HP." % amt)
 
 
 func _hide() -> void:
@@ -508,49 +857,52 @@ func _hide() -> void:
 		say("You fail to find cover (Stealth %d)." % total)
 
 
-func _magic_missile() -> void:
-	if hero["slots"] <= 0:
-		say("No spell slots left. Rest on the stairs to recover.")
+func _rage() -> void:
+	if int(hero["rage"]) > 0:
+		say("You are already raging.")
 		return
-	var targets := _visible_monsters_by_distance()
-	if targets.is_empty():
-		say("No visible target for Magic Missile.")
+	if bonus_used:
+		say("You've already used your Bonus Action this turn.")
 		return
-	hero["slots"] -= 1
-	hero["hidden"] = false
-	var darts := 3 + _max_spell_level() - 1  # cast with your highest slot
-	say("Magic Missile! %d glowing darts streak out." % darts)
-	var ti := 0
-	for _i in darts:
-		while ti < targets.size() and targets[ti]["hp"] <= 0:
-			ti += 1
-		if ti >= targets.size():
-			break
-		_damage_monster(targets[ti], roll(1, 4) + 1, false, "force")
-	_end_turn()
+	if int(hero["rage_uses"]) <= 0:
+		say("No Rage left. Rest to recover it.")
+		return
+	hero["rage_uses"] -= 1
+	hero["rage"] = 10
+	bonus_used = true
+	say("[color=#ff6b4a]You RAGE! Half damage from weapons and claws, +%d melee damage.[/color]" % _rage_bonus())
 
 
-func _second_wind_max() -> int:
+func _pool_maxes() -> Dictionary:
 	var lvl: int = hero["level"]
-	if lvl >= 10:
-		return 4
-	if lvl >= 4:
-		return 3
-	return 2
+	var cls: String = hero["cls"]
+	var out := {"second_wind": 0, "rage_uses": 0, "channel": 0, "hm_free": 0, "slots": max_slots()}
+	match cls:
+		"Fighter":
+			out["second_wind"] = 4 if lvl >= 10 else (3 if lvl >= 4 else 2)
+		"Barbarian":
+			out["rage_uses"] = 6 if lvl >= 17 else (5 if lvl >= 12 else (4 if lvl >= 6 else (3 if lvl >= 3 else 2)))
+		"Cleric":
+			out["channel"] = 4 if lvl >= 18 else (3 if lvl >= 6 else (2 if lvl >= 2 else 0))
+		"Ranger":
+			out["hm_free"] = 6 if lvl >= 17 else (5 if lvl >= 13 else (4 if lvl >= 9 else (3 if lvl >= 5 else 2)))
+	return out
 
 
-func _max_slots() -> int:
-	return GameData.WIZARD_SLOTS[int(hero["level"]) - 1]
+func _rage_bonus() -> int:
+	var lvl: int = hero["level"]
+	return 4 if lvl >= 16 else (3 if lvl >= 9 else 2)
 
 
-func _max_spell_level() -> int:
-	return mini(9, ceili(int(hero["level"]) / 2.0))
+func _cantrip_dice() -> int:
+	var lvl: int = hero["level"]
+	return 1 + (1 if lvl >= 5 else 0) + (1 if lvl >= 11 else 0) + (1 if lvl >= 17 else 0)
 
 
 # --- Resting -----------------------------------------------------------------------
 
 func _short_rest() -> void:
-	var die: int = GameData.CLASSES[hero["cls"]]["hit_die"]
+	var die: int = _cls()["hit_die"]
 	var healed := 0
 	var spent := 0
 	while hero["hit_dice"] > 0 and hero["hp_max"] - hero["hp"] >= die / 2 + 1:
@@ -559,10 +911,13 @@ func _short_rest() -> void:
 		hero["hit_dice"] -= 1
 		healed += amt
 		spent += 1
-	hero["second_wind"] = mini(_second_wind_max(), hero["second_wind"] + 1)
+	# Features that regain one use on a Short Rest.
+	var maxes := _pool_maxes()
+	for k in ["second_wind", "rage_uses", "channel"]:
+		hero[k] = mini(int(maxes[k]), int(hero[k]) + 1)
 	var extra := ""
 	if hero["cls"] == "Wizard" and not hero["arcane_used"]:
-		var regained := mini(_max_slots() - int(hero["slots"]), ceili(int(hero["level"]) / 2.0))
+		var regained := mini(max_slots() - int(hero["slots"]), ceili(int(hero["level"]) / 2.0))
 		if regained > 0:
 			hero["slots"] += regained
 			hero["arcane_used"] = true
@@ -573,8 +928,9 @@ func _short_rest() -> void:
 func _long_rest() -> void:
 	hero["hp"] = hero["hp_max"]
 	hero["hit_dice"] = hero["level"]
-	hero["second_wind"] = _second_wind_max()
-	hero["slots"] = _max_slots()
+	var maxes := _pool_maxes()
+	for k in maxes:
+		hero[k] = maxes[k]
 	hero["arcane_used"] = false
 	if hero["species"] == "Orc":
 		hero["relentless"] = true
@@ -585,55 +941,93 @@ func _long_rest() -> void:
 
 # --- Combat ------------------------------------------------------------------------
 
-func _hero_melee(m: Dictionary) -> void:
+func _hero_attack_action(m: Dictionary, ranged: bool) -> void:
 	var lvl: int = hero["level"]
 	var attacks := 1
-	if hero["cls"] == "Fighter":
-		attacks += (1 if lvl >= 5 else 0) + (1 if lvl >= 11 else 0) + (1 if lvl >= 20 else 0)
+	match hero["cls"]:
+		"Fighter":
+			attacks += (1 if lvl >= 5 else 0) + (1 if lvl >= 11 else 0) + (1 if lvl >= 20 else 0)
+		"Barbarian", "Ranger":
+			attacks += 1 if lvl >= 5 else 0
 	for _i in attacks:
 		if m["hp"] <= 0:
 			break
-		_weapon_attack(m)
+		_weapon_attack(m, ranged)
 
 
-func _weapon_attack(m: Dictionary) -> void:
-	var adv := 1 if hero["hidden"] else 0
+func _weapon_attack(m: Dictionary, ranged: bool) -> void:
+	var c := _cls()
+	var adv := 0
+	var dis := 0
+	if hero["hidden"]:
+		adv += 1
 	hero["hidden"] = false
-	var c: Dictionary = GameData.CLASSES[hero["cls"]]
-	var ab_mod := _mod(c["attack_ability"])
-	var bonus: int = ab_mod + prof() + int(hero["weapon_bonus"])
-	var r := _hero_d20(adv)
+	if m.get("guided", false):
+		adv += 1
+		m["guided"] = false
+	if m.get("restrained", false):
+		adv += 1
+	if not ranged and hero["reckless"] and c["attack_ability"] == "str":
+		adv += 1
+	if ranged and _enemy_adjacent():
+		dis += 1
+	var a := _net_adv(adv, dis)
+
+	var ab: String = "dex" if ranged else c["attack_ability"]
+	var ab_mod := _mod(ab)
+	var archery := 2 if ranged and hero["cls"] == "Ranger" and int(hero["level"]) >= 2 else 0
+	var bonus: int = ab_mod + prof() + int(hero["weapon_bonus"]) + archery
+	var r := _hero_d20(a)
 	var hit := _is_hit(r, bonus, m["ac"])
 	if not hit and hero["inspiration"]:
 		hero["inspiration"] = false
 		say("Heroic Inspiration - you reroll.")
-		r = _hero_d20(adv)
+		r = _hero_d20(a)
 		hit = _is_hit(r, bonus, m["ac"])
+	var wname: String = "longbow" if ranged else String(c["weapon"]).to_lower()
 	if not hit:
-		say("You miss the %s." % m["name"])
+		say("Your %s misses the %s." % [wname, m["name"]])
 		return
 	var crit := r == 20
-	var dice: Array = c["dice"]
-	var dmg: int = roll(dice[0] * (2 if crit else 1), dice[1]) + ab_mod + int(hero["weapon_bonus"])
+	var dice: Array = [1, 8] if ranged else c["dice"]
+	var mult := 2 if crit else 1
+	var dmg: int = roll(int(dice[0]) * mult, dice[1]) + ab_mod + int(hero["weapon_bonus"])
 	var note := ""
-	if hero["cls"] == "Rogue" and adv > 0 and not sneak_used:
+	if not ranged and int(hero["rage"]) > 0:
+		dmg += _rage_bonus()
+		note += " +Rage"
+	if hero["cls"] == "Rogue" and a > 0 and not sneak_used:
 		sneak_used = true
-		var sa := ceili(int(hero["level"]) / 2.0)
-		dmg += roll(sa * (2 if crit else 1), 6)
-		note = " (Sneak Attack)"
+		dmg += roll(ceili(int(hero["level"]) / 2.0) * mult, 6)
+		note += " +Sneak Attack"
+	if hero["conc"] == "hunters_mark":
+		if not _any_marked():
+			m["marked"] = true  # mark moves to the next creature you hit
+		if m["marked"]:
+			dmg += roll(mult, 6)
+			note += " +Mark"
 	dmg = maxi(1, dmg)
-	say("You %s the %s for %d%s." % ["CRIT" if crit else "hit", m["name"], dmg, note])
+	say("Your %s %s the %s for %d%s." % [wname, "CRITS" if crit else "hits", m["name"], dmg, note])
 	_damage_monster(m, dmg, crit, "")
+	if hero["ensnare_ready"] and m["hp"] > 0:
+		hero["ensnare_ready"] = false
+		if _monster_save(m, STR, spell_dc()):
+			say("The %s tears through the vines." % m["name"])
+			_end_conc(false)
+		else:
+			m["restrained"] = true
+			say("[color=#7fc24f]Vines ensnare the %s! It is Restrained.[/color]" % m["name"])
 
 
 func _damage_monster(m: Dictionary, dmg: int, crit: bool, kind: String) -> void:
 	m["hp"] -= dmg
 	m["awake"] = true
+	m["turned"] = 0  # Turn Undead ends when the creature takes damage
 	if kind == "fire":
 		m["no_regen"] = true
 	if m["hp"] <= 0 and m.get("fortitude", false) and not crit and kind != "radiant":
 		# Undead Fortitude: Constitution save, DC 5 + damage taken.
-		if d20() + 3 >= 5 + dmg:
+		if d20() + int(m["sv"][CON]) >= 5 + dmg:
 			m["hp"] = 1
 			say("The %s refuses to fall!" % m["name"])
 	if m["hp"] <= 0:
@@ -645,6 +1039,10 @@ func _kill(m: Dictionary) -> void:
 	hero["xp"] += gained
 	hero["kills"] += 1
 	say("The %s is destroyed! (+%d XP)" % [m["name"], gained])
+	if is_same(m, target):
+		target = null
+	if m.get("restrained", false) and hero["conc"] == "ensnaring_strike":
+		_end_conc(false)
 	var p: Vector2i = m["pos"]
 	if rng.randf() < 0.3 and not items.has(p) and p != stairs:
 		items[p] = "gold"
@@ -657,9 +1055,10 @@ func _kill(m: Dictionary) -> void:
 
 func _check_level_up() -> void:
 	while int(hero["level"]) < 20 and int(hero["xp"]) >= GameData.XP_TABLE[int(hero["level"])]:
+		var before := _pool_maxes()
 		hero["level"] += 1
 		var lvl: int = hero["level"]
-		var c: Dictionary = GameData.CLASSES[hero["cls"]]
+		var c := _cls()
 		var scores: Dictionary = hero["scores"]
 		if lvl in [4, 8, 12, 16, 19]:
 			var prim: String = c["primary"]
@@ -674,17 +1073,30 @@ func _check_level_up() -> void:
 		hero["hp_max"] += gain
 		hero["hp"] += gain
 		hero["hit_dice"] += 1
-		if hero["cls"] == "Wizard":
-			hero["slots"] += GameData.WIZARD_SLOTS[lvl - 1] - GameData.WIZARD_SLOTS[lvl - 2]
+		var after := _pool_maxes()
+		for k in after:
+			hero[k] = int(hero[k]) + int(after[k]) - int(before[k])
 		say("[color=#ffe066]Level up! You are now level %d (+%d HP).[/color]" % [lvl, gain])
-		if lvl == 5:
-			match hero["cls"]:
-				"Fighter":
-					say("New feature: Extra Attack.")
-				"Rogue":
-					say("New feature: Uncanny Dodge.")
-				"Wizard":
-					say("Fire Bolt now deals 2d10.")
+		var feat := _new_feature(String(hero["cls"]), lvl)
+		if feat != "":
+			say("New: %s" % feat)
+
+
+func _new_feature(cls: String, lvl: int) -> String:
+	var table := {
+		"Fighter": {5: "Extra Attack.", 11: "Two Extra Attacks."},
+		"Rogue": {5: "Uncanny Dodge."},
+		"Barbarian": {2: "Reckless Attack (button).", 5: "Extra Attack."},
+		"Ranger": {2: "Archery: +2 to longbow attacks.", 5: "Extra Attack."},
+		"Wizard": {3: "Shatter.", 5: "Fireball. Fire Bolt now 2d10."},
+		"Cleric": {2: "Turn Undead.", 5: "Spirit Guardians. Sacred Flame now 2d8."},
+	}
+	var ct: Dictionary = table.get(cls, {})
+	return ct.get(lvl, "")
+
+
+func _heal(amt: int) -> void:
+	hero["hp"] = mini(int(hero["hp_max"]), int(hero["hp"]) + amt)
 
 
 func _hurt_hero(dmg: int, source: String) -> void:
@@ -699,7 +1111,13 @@ func _hurt_hero(dmg: int, source: String) -> void:
 			hero["hp"] = 0
 			over = true
 			death_cause = source
-			say("[color=#ff5555]You were slain by a %s on floor %d.[/color]" % [source, floor_num])
+			say("[color=#ff5555]You were slain by %s on floor %d.[/color]" % [source, floor_num])
+			return
+	# Concentration check: CON save, DC 10 or half the damage.
+	if hero["conc"] != "" and dmg > 0:
+		var dc := mini(30, maxi(10, dmg / 2))
+		if _hero_save("con") < dc:
+			_end_conc(true)
 
 
 func _end_turn() -> void:
@@ -710,7 +1128,15 @@ func _end_turn() -> void:
 			break
 		if m["hp"] > 0:
 			_monster_act(m)
+		if m["hp"] > 0 and not over:
+			_guardian_check(m)
 	monsters = monsters.filter(func(mm): return mm["hp"] > 0)
+	if target != null and target["hp"] <= 0:
+		target = null
+	if int(hero["rage"]) > 0:
+		hero["rage"] -= 1
+		if int(hero["rage"]) == 0:
+			say("Your Rage fades.")
 	turn += 1
 	bonus_used = false
 	sneak_used = false
@@ -726,6 +1152,22 @@ func _monster_act(m: Dictionary) -> void:
 			m["no_regen"] = false
 		else:
 			m["hp"] = mini(m["hp_max"], m["hp"] + regen)
+	if m.get("restrained", false):
+		var bite := roll(1, 6)
+		say("Thorny vines bite the %s (%d)." % [m["name"], bite])
+		_damage_monster(m, bite, false, "piercing")
+		if m["hp"] <= 0:
+			return
+		if _monster_save(m, STR, spell_dc()):
+			m["restrained"] = false
+			say("The %s breaks free of the vines." % m["name"])
+			if hero["conc"] == "ensnaring_strike":
+				_end_conc(false)
+	if int(m.get("turned", 0)) > 0:
+		m["turned"] -= 1
+		_monster_flee(m)
+		return
+
 	var mp: Vector2i = m["pos"]
 	var hp: Vector2i = hero["pos"]
 	var sees := vis[mp.y * w + mp.x] == 1
@@ -736,7 +1178,7 @@ func _monster_act(m: Dictionary) -> void:
 			hero["hidden"] = false
 			say("The %s spots you!" % m["name"])
 		else:
-			if m["awake"] and rng.randf() < 0.5:
+			if m["awake"] and rng.randf() < 0.5 and not m.get("restrained", false):
 				_monster_wander(m)
 			return
 
@@ -766,7 +1208,7 @@ func _monster_act(m: Dictionary) -> void:
 
 	if dist <= 1 and _can_step(mp, hp - mp):
 		_monster_attack(m)
-	else:
+	elif not m.get("restrained", false):
 		_monster_move(m)
 
 
@@ -776,11 +1218,22 @@ func _monster_attack(m: Dictionary) -> void:
 	var total := 0
 	var n: int = m["attacks"]
 	var dice: Array = m["dmg"]
+	var physical: bool = m.get("dtype", "phys") == "phys"
+	var raging := int(hero["rage"]) > 0
 	for _i in n:
-		var adv := 1 if m.get("pack", false) and _ally_adjacent(m) else 0
-		var r := d20(adv)
+		var adv := 0
+		var dis := 0
+		if m.get("pack", false) and _ally_adjacent(m):
+			adv += 1
+		if hero["reckless"]:
+			adv += 1
+		if m.get("restrained", false):
+			dis += 1
+		var r := d20(_net_adv(adv, dis))
 		if r == 20 or (r != 1 and r + int(m["atk"]) >= ac):
-			var dmg: int = roll(dice[0] * (2 if r == 20 else 1), dice[1]) + dice[2]
+			var dmg: int = roll(int(dice[0]) * (2 if r == 20 else 1), dice[1]) + int(dice[2])
+			if raging and physical:
+				dmg = dmg / 2
 			if hero["cls"] == "Rogue" and int(hero["level"]) >= 5 and not uncanny_used:
 				uncanny_used = true
 				dmg = dmg / 2
@@ -790,11 +1243,12 @@ func _monster_attack(m: Dictionary) -> void:
 	if hits == 0:
 		say("The %s misses you." % m["name"])
 		return
+	var rage_note := " (Rage halves it)" if raging and physical else ""
 	if n == 1:
-		say("The %s hits you for %d." % [m["name"], total])
+		say("The %s hits you for %d%s." % [m["name"], total, rage_note])
 	else:
-		say("The %s hits you %d of %d times for %d." % [m["name"], hits, n, total])
-	_hurt_hero(total, m["name"])
+		say("The %s hits you %d of %d times for %d%s." % [m["name"], hits, n, total, rage_note])
+	_hurt_hero(total, "a " + String(m["name"]))
 
 
 func _monster_move(m: Dictionary) -> void:
@@ -820,12 +1274,53 @@ func _monster_move(m: Dictionary) -> void:
 	m["pos"] = best
 
 
+func _monster_flee(m: Dictionary) -> void:
+	if m.get("restrained", false):
+		return
+	var mp: Vector2i = m["pos"]
+	var hp: Vector2i = hero["pos"]
+	var best_d := _cheb(mp, hp)
+	var best := mp
+	for d in DungeonGen.DIRS:
+		var q: Vector2i = mp + d
+		if q == hp or monster_at(q) != null or not _can_step(mp, d):
+			continue
+		var dd := _cheb(q, hp)
+		if dd > best_d:
+			best_d = dd
+			best = q
+	m["pos"] = best
+
+
 func _monster_wander(m: Dictionary) -> void:
 	var mp: Vector2i = m["pos"]
 	var d: Vector2i = DungeonGen.DIRS[rng.randi_range(0, 7)]
 	var q := mp + d
 	if q != hero["pos"] and monster_at(q) == null and _can_step(mp, d):
 		m["pos"] = q
+
+
+func _push(m: Dictionary, steps: int) -> void:
+	var hp: Vector2i = hero["pos"]
+	for _i in steps:
+		var mp: Vector2i = m["pos"]
+		var dir := Vector2i(signi(mp.x - hp.x), signi(mp.y - hp.y))
+		var q := mp + dir
+		if dir == Vector2i.ZERO or not _can_step(mp, dir) or monster_at(q) != null or q == hp:
+			return
+		m["pos"] = q
+
+
+## Spirit Guardians: enemies ending their turn within 3 squares make a WIS save.
+func _guardian_check(m: Dictionary) -> void:
+	if hero["conc"] != "spirit_guardians" or _cheb(m["pos"], hero["pos"]) > 3:
+		return
+	var up := maxi(0, max_spell_level() - 3)
+	var dmg := roll(3 + up, 8)
+	var saved := _monster_save(m, WIS, spell_dc())
+	var dealt := dmg / 2 if saved else dmg
+	say("Spirit Guardians sear the %s for %d%s." % [m["name"], dealt, " (saved)" if saved else ""])
+	_damage_monster(m, dealt, false, "radiant")
 
 
 func _ally_adjacent(m: Dictionary) -> bool:
@@ -836,7 +1331,7 @@ func _ally_adjacent(m: Dictionary) -> bool:
 	return false
 
 
-# --- Helpers -----------------------------------------------------------------------
+# --- Dice and saves ----------------------------------------------------------------
 
 func roll(count: int, sides: int) -> int:
 	var t := 0
@@ -854,6 +1349,15 @@ func d20(adv: int = 0) -> int:
 	return maxi(a, b) if adv > 0 else mini(a, b)
 
 
+## Any Advantage and any Disadvantage cancel out (2024 rule).
+func _net_adv(adv: int, dis: int) -> int:
+	if adv > 0 and dis == 0:
+		return 1
+	if dis > 0 and adv == 0:
+		return -1
+	return 0
+
+
 func _hero_d20(adv: int) -> int:
 	var r := d20(adv)
 	if r == 1 and hero["species"] == "Halfling":
@@ -861,13 +1365,39 @@ func _hero_d20(adv: int) -> int:
 	return r
 
 
+## Hero saving throw total (d20 + modifier + proficiency if proficient).
+func _hero_save(ability: String) -> int:
+	var adv := 1 if ability == "str" and int(hero["rage"]) > 0 else 0
+	var total := _hero_d20(adv) + _mod(ability)
+	if ability in _cls()["saves"]:
+		total += prof()
+	return total
+
+
+func _monster_save(m: Dictionary, ability: int, dc: int) -> bool:
+	var sv: Array = m.get("sv", [0, 0, 0, 0, 0, 0])
+	var adv := -1 if ability == DEX and m.get("restrained", false) else 0
+	return d20(adv) + int(sv[ability]) >= dc
+
+
 func _is_hit(r: int, bonus: int, ac: int) -> bool:
 	return r == 20 or (r != 1 and r + bonus >= ac)
+
+
+# --- Helpers -----------------------------------------------------------------------
+
+func _cls() -> Dictionary:
+	return GameData.CLASSES[hero["cls"]]
 
 
 func _mod(ability: String) -> int:
 	var scores: Dictionary = hero["scores"]
 	return GameData.mod(scores[ability])
+
+
+func _caster_mod() -> int:
+	var ab: String = _cls()["caster"]
+	return _mod(ab) if ab != "" else 0
 
 
 func _cheb(a: Vector2i, b: Vector2i) -> int:
@@ -898,9 +1428,32 @@ func _can_step(from: Vector2i, d: Vector2i) -> bool:
 func _enemy_adjacent() -> bool:
 	var hp: Vector2i = hero["pos"]
 	for m in monsters:
-		if m["hp"] > 0 and _cheb(m["pos"], hp) <= 1:
+		if m["hp"] > 0 and _cheb(m["pos"], hp) <= 1 and int(m.get("turned", 0)) == 0:
 			return true
 	return false
+
+
+func _any_marked() -> bool:
+	for m in monsters:
+		if m["hp"] > 0 and m.get("marked", false):
+			return true
+	return false
+
+
+func _undead_in_range() -> Array:
+	var out: Array = []
+	for m in _visible_monsters_by_distance():
+		if m.get("undead", false) and not m.get("turn_immune", false) and _cheb(m["pos"], hero["pos"]) <= 6:
+			out.append(m)
+	return out
+
+
+func _monsters_near(center: Vector2i, radius: int) -> Array:
+	var out: Array = []
+	for m in monsters:
+		if m["hp"] > 0 and _cheb(m["pos"], center) <= radius:
+			out.append(m)
+	return out
 
 
 func _visible_monsters_by_distance() -> Array:
@@ -912,6 +1465,24 @@ func _visible_monsters_by_distance() -> Array:
 	var hp: Vector2i = hero["pos"]
 	out.sort_custom(func(a, b): return _cheb(a["pos"], hp) < _cheb(b["pos"], hp))
 	return out
+
+
+## Preferred enemy if still visible, else the selected target, else the nearest visible enemy.
+func _pick_target(pref, remember := true):
+	var chosen = null
+	for cand in [pref, target]:
+		if cand != null and cand["hp"] > 0:
+			var p: Vector2i = cand["pos"]
+			if vis[p.y * w + p.x] == 1:
+				chosen = cand
+				break
+	if chosen == null:
+		var seen := _visible_monsters_by_distance()
+		if not seen.is_empty():
+			chosen = seen[0]
+	if remember and chosen != null:
+		target = chosen
+	return chosen
 
 
 func _free_neighbor(p: Vector2i):

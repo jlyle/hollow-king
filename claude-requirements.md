@@ -37,6 +37,8 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | R-07 | Enemies to vanquish along the way | Done | 16 SRD-style monsters plus an original boss (Hollow King). |
 | R-08 | Player can see every control / keybind in-game | Done | Controls screen: button, `?` / F1, Android Back. |
 | R-09 | A run survives Android closing the app: it is saved automatically and can be resumed | Done | Autosave after every turn; **Continue** on the title screen. From B-01. |
+| R-10 | Six playable classes: Fighter, Rogue, Wizard, Cleric, Barbarian, Ranger | Done | Cleric, Barbarian, Ranger added from B-02. |
+| R-11 | Spells, including spells that force saving throws, with conditions and Concentration | Done | Spell menu; monster saves use per-ability save bonuses. From B-02. See 5.3. |
 
 ---
 
@@ -72,36 +74,65 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - Taking the stairs is a **Short Rest**. Arriving on floors **5, 9, 13, 17, 20** gives a **Long Rest**.
 
 ### 5.2 Hero
-- **Classes:** Fighter, Rogue, Wizard. **Species:** Human, Dwarf, Halfling, Orc.
+- **Classes:** Fighter, Rogue, Wizard, Cleric, Barbarian, Ranger. **Species:** Human, Dwarf, Halfling, Orc.
 - Ability scores use the standard array plus a +2/+1 background bonus.
 - Also implemented: proficiency bonus, the XP table to level 20, Hit Dice, and Ability Score Improvements at levels 4, 8, 12, 16 and 19.
 - Each turn has one **Action** (move, attack or cast) and one **Bonus Action** (potion, Second Wind or Hide), which does not end the turn.
 - **Fighter:** AC 19 (Defense fighting style), Second Wind, Extra Attack at levels 5, 11 and 20.
 - **Rogue:** Hide (Stealth with Expertise vs DC 15), Sneak Attack with Advantage, Uncanny Dodge at level 5.
-- **Wizard:** Mage Armor, Fire Bolt (scales at levels 5, 11 and 17; it stops a Troll's regeneration), Magic Missile (costs a slot), Arcane Recovery.
+- **Wizard:** Mage Armor (AC 13 + DEX), spells (5.3), Arcane Recovery.
+- **Cleric (Protector):** chain mail + shield (AC 18), mace. Spells (5.3). Channel Divinity uses: 2 at level 2, 3 at 6, 4 at 18.
+- **Barbarian:** Unarmored Defense (10 + DEX + CON), greataxe. **Rage** (bonus action, 10 turns): halves physical damage taken, +2/+3/+4 melee damage. Uses 2/3/4/5/6 at levels 1/3/6/12/17. **Reckless Attack** toggle from level 2 (Advantage on your melee attacks, enemies get Advantage on you). Extra Attack at level 5.
+- **Ranger:** studded leather (AC 12 + DEX), shortsword + **longbow** (tap a far enemy to shoot). Archery style (+2 ranged) from level 2. Extra Attack at level 5. **Hunter's Mark** free uses 2/3/4/5/6 at levels 1/5/9/13/17, then slots.
+- **Saving throw proficiencies:** Fighter STR/CON, Rogue DEX/INT, Wizard INT/WIS, Cleric WIS/CHA, Barbarian STR/CON, Ranger STR/DEX. Spell save DC = 8 + casting modifier + proficiency bonus.
 - **Species traits:** Human gets Heroic Inspiration, Dwarf gets +1 HP per level and Darkvision, Halfling gets Luck, Orc gets Relentless Endurance and Darkvision.
 
-### 5.3 Enemies
+### 5.3 Spells (R-11)
+| Spell | Class | Level (char. lvl) | Effect |
+|---|---|---|---|
+| Fire Bolt | Wizard | cantrip | Spell attack, 1d10 fire (scales 5/11/17). Stops regeneration. |
+| Magic Missile | Wizard | 1st | Auto-hit darts, 1d4+1 force each, 3 + 1 per slot level above 1st. |
+| Burning Hands | Wizard | 1st | **DEX save**, cone 3 squares: 3d6 fire, half on save. |
+| Thunderwave | Wizard | 1st | **CON save**, adjacent enemies: 2d8 thunder + push 2; half, no push on save. |
+| Shatter | Wizard | 2nd (lvl 3) | **CON save**, 2-square burst: 3d8 thunder, half on save. Can hit you. |
+| Fireball | Wizard | 3rd (lvl 5) | **DEX save**, 4-square burst: 8d6 fire, half on save. Can hit you. |
+| Sacred Flame | Cleric | cantrip | **DEX save**, 1d8 radiant (scales), nothing on save. Radiant beats Undead Fortitude. |
+| Healing Word | Cleric | 1st | Bonus Action. Heal 2d4 + WIS, +2d4 per slot level above 1st. |
+| Guiding Bolt | Cleric | 1st | Spell attack, 4d6 radiant; your next attack on it has Advantage. |
+| Turn Undead | Cleric | Channel Divinity (lvl 2) | **WIS save**, undead within 6 squares flee for 10 turns; ends if damaged. Boss immune. |
+| Spirit Guardians | Cleric | 3rd (lvl 5) | Concentration. Enemies ending a turn within 3 squares: **WIS save**, 3d8 radiant, half on save. |
+| Hunter's Mark | Ranger | 1st | Bonus Action, Concentration. +1d6 force on weapon hits against the mark. |
+| Ensnaring Strike | Ranger | 1st | Bonus Action, Concentration. Next hit: **STR save** or Restrained (can't move, 1d6/turn, repeats save). |
+| Cure Wounds | Ranger | 1st | Heal 2d8 + WIS, +2d8 per slot level above 1st. |
+
+- **Conditions:** Restrained (no movement, Disadvantage on its attacks, Advantage against it, Disadvantage on DEX saves); Frightened by Turn Undead (flees, can't attack); Guided (next attack has Advantage).
+- **Concentration:** one spell at a time. Casting another ends it. Taking damage forces a CON save, DC 10 or half the damage (whichever is higher). It also ends on a new floor.
+- Monster stat blocks carry save bonuses for all six abilities, plus undead/damage-type tags.
+
+### 5.4 Enemies
 - Giant Rat, Kobold, Goblin, Skeleton, Zombie, Wolf, Hobgoblin, Ghoul, Bugbear, Giant Spider, Ogre, Minotaur, Wight, Wraith, Troll and Hill Giant.
 - **Boss:** the Hollow King (AC 18, 200 HP, 3 attacks), who raises skeletons.
 - **Traits:** Pack Tactics, Undead Fortitude, Regeneration.
 
-### 5.4 Items
+### 5.5 Items
 - Potion of Healing (2d4+2) and Greater Healing (4d4+4).
 - Gold.
 - Weapon and armor upgrades from +1 to +3.
 
-### 5.5 Saving (R-09)
+### 5.6 Saving (R-09)
 - One save slot, stored in `user://run.save` on the device.
 - Autosaves after every action, and when the app is paused, loses focus or closes. The save is written to a temp file first, so a kill mid-write can't corrupt it.
 - The random number generator's state is saved too. Reloading replays the same rolls, so quitting can't be used to reroll a bad outcome (save-scumming).
 - The save is deleted when the run ends (death or victory). This keeps permadeath (R-02).
 - Title screen shows **Continue (Floor N, Lv N class)** when a save exists. Starting a new run replaces the saved run; the button says so.
 
-### 5.6 Deliberate simplifications of the rules
+### 5.7 Deliberate simplifications of the rules
 - One square per turn. Every awake monster acts once per hero turn, with no initiative order.
 - No death saves.
-- Wizard spell slots are a single pool, not tracked by spell level.
+- Spell slots are a single pool, not tracked by spell level. Leveled spells are always cast at your highest available slot level.
+- Areas are measured in squares (1 square = 5 ft); cones aim at your current target.
+- Ensnaring Strike is primed before the hit; Hunter's Mark moves to the next creature you hit for free when its target dies.
+- Rage lasts 10 turns. Spirit Guardians lasts until Concentration breaks or you change floors.
 - Monster stat blocks are trimmed to AC, HP, attacks and one key trait.
 
 ---
@@ -126,7 +157,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | ID | Item | Status |
 |---|---|---|
 | B-01 | Save/resume a run when Android closes the app | Done (see R-09) |
-| B-02 | More classes (Cleric, Barbarian, Ranger) and spells with saving throws | Proposed |
+| B-02 | More classes (Cleric, Barbarian, Ranger) and spells with saving throws | Done (see R-10, R-11) |
 | B-03 | Inventory screen; shops between floors; scrolls and wands | Proposed |
 | B-04 | Ranged and spellcasting monsters | Proposed |
 | B-05 | Mini-bosses on floors 5, 10, 15 | Proposed |
@@ -146,3 +177,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | R-08 Controls screen added. |
 | 2026-11-19 | D-08: this file created as the source of truth. |
 | 2026-11-19 | B-01 built as R-09: autosave every turn, Continue on title, save deleted on death/victory. |
+| 2026-11-19 | B-02 built as R-10/R-11: Cleric, Barbarian, Ranger; spell menu with saving-throw spells, conditions, Concentration. Save format v2 (older saves are discarded). |
