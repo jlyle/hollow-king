@@ -9,7 +9,8 @@
 # Override the Godot command with GODOT=..., e.g.  GODOT="flatpak run org.godotengine.Godot" tools/android.sh debug
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"   # absolute path, before we cd
+cd "$(dirname "$SELF")/.."
 GODOT="${GODOT:-godot}"
 KEY_DIR="${HOME}/.android-keys"
 UPLOAD_KEYSTORE="${KEY_DIR}/hollowking-upload.keystore"
@@ -137,5 +138,5 @@ case "${1:-}" in
 	debug) debug ;;
 	keystore) keystore ;;
 	release) release ;;
-	*) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+	*) sed -n '2,9p' "$SELF" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
