@@ -11,6 +11,9 @@ const MAX_FLOOR := 20
 const XP_MULT := 1.0          ## Tuning knob: raise to level faster.
 const LOG_SIZE := 6
 const LONG_REST_FLOORS := [5, 9, 13, 17, 20]   ## Arriving on these floors grants a Long Rest.
+const SAVE_PATH := "user://run.save"   ## R-09: single autosave slot
+const SAVE_TMP := "user://run.save.tmp"
+const SAVE_VERSION := 1
 
 var rng := RandomNumberGenerator.new()
 var seed_value := 0
@@ -190,6 +193,90 @@ func _place_item(spots: Array, kind: String) -> void:
 			continue
 		items[p] = kind
 		return
+
+
+# --- Save / resume (R-09) ----------------------------------------------------------
+
+## Writes the whole run to disk. Called after every action. Deletes the save once the run is over.
+func save_run() -> void:
+	if over:
+		delete_save()
+		return
+	var data := {
+		"version": SAVE_VERSION,
+		"seed_value": seed_value, "rng_seed": rng.seed, "rng_state": rng.state,
+		"floor_num": floor_num, "floor_theme": floor_theme, "w": w, "h": h,
+		"tiles": tiles, "explored": explored, "stairs": stairs,
+		"monsters": monsters, "items": items, "hero": hero,
+		"turn": turn, "log_lines": log_lines, "bonus_used": bonus_used,
+	}
+	# Write to a temp file, then swap it in, so a kill mid-write never corrupts the save.
+	var f := FileAccess.open(SAVE_TMP, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_var(data)
+	f.close()
+	var real := ProjectSettings.globalize_path(SAVE_PATH)
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(real)
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(SAVE_TMP), real)
+
+
+## Restores a saved run. Returns false if there is no valid save.
+func load_run() -> bool:
+	var data := Game.read_save()
+	if data.is_empty():
+		return false
+	seed_value = data["seed_value"]
+	rng.seed = data["rng_seed"]
+	rng.state = data["rng_state"]  # same future rolls: quitting can't reroll a bad outcome
+	floor_num = data["floor_num"]
+	floor_theme = data["floor_theme"]
+	w = data["w"]
+	h = data["h"]
+	tiles = data["tiles"]
+	explored = data["explored"]
+	stairs = data["stairs"]
+	monsters = data["monsters"]
+	items = data["items"]
+	hero = data["hero"]
+	turn = data["turn"]
+	log_lines = data["log_lines"]
+	bonus_used = data["bonus_used"]
+	over = false
+	won = false
+	travel.clear()
+	vis = PackedByteArray()
+	vis.resize(w * h)
+	vis.fill(0)
+	_setup_astar()
+	_compute_fov()
+	say("[color=#7fc2ff]Run resumed.[/color]")
+	return true
+
+
+static func read_save() -> Dictionary:
+	for path in [SAVE_PATH, SAVE_TMP]:
+		if not FileAccess.file_exists(path):
+			continue
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f == null:
+			continue
+		var data = f.get_var()
+		f.close()
+		if data is Dictionary and data.get("version", -1) == SAVE_VERSION and data.has("hero"):
+			return data
+	return {}
+
+
+static func has_save() -> bool:
+	return not read_save().is_empty()
+
+
+static func delete_save() -> void:
+	for path in [SAVE_PATH, SAVE_TMP]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 # --- Queries used by the UI --------------------------------------------------------

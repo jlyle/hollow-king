@@ -22,6 +22,7 @@ Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, 
 | **Enemies** | 16 SRD-style monsters (Giant Rat → Hill Giant) plus an original boss. Pack Tactics, Undead Fortitude, Troll regeneration (fire stops it), boss raises skeletons. |
 | **Rests** | Taking the stairs is a Short Rest (spend Hit Dice). Arriving on floors 5, 9, 13, 17 and 20 gives a Long Rest. |
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
+| **Save / resume** | Autosaves after every action and when Android pauses or closes the app. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
 | **Phone UX** | Tap to move/attack, tap far away to auto-walk (stops when enemies appear), tap yourself to wait or descend. Big buttons. Portrait. In-game **Controls** screen (button, ?/F1, or Android Back) lists every tap, key and map symbol. |
 
 ### Class features implemented
@@ -66,8 +67,7 @@ Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` 
 > This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
 ## Suggested next steps
-1. Save/resume when Android closes the app mid-run.
-2. More classes (Cleric, Barbarian, Ranger) and spells with saving throws.
-3. Inventory screen, shops between floors, scrolls/wands.
-4. Ranged and spellcasting monsters; floor-specific mini-bosses on 5/10/15.
-5. Sound, haptics, and an optional tileset to replace the ASCII.
+1. More classes (Cleric, Barbarian, Ranger) and spells with saving throws.
+2. Inventory screen, shops between floors, scrolls/wands.
+3. Ranged and spellcasting monsters; floor-specific mini-bosses on 5/10/15.
+4. Sound, haptics, and an optional tileset to replace the ASCII.

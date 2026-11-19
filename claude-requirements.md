@@ -36,6 +36,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | R-06 | Difficulty rises level by level | Done | Monster pool shifts by floor; count grows with depth; final boss on floor 20. |
 | R-07 | Enemies to vanquish along the way | Done | 16 SRD-style monsters plus an original boss (Hollow King). |
 | R-08 | Player can see every control / keybind in-game | Done | Controls screen: button, `?` / F1, Android Back. |
+| R-09 | A run survives Android closing the app: it is saved automatically and can be resumed | Done | Autosave after every turn; **Continue** on the title screen. From B-01. |
 
 ---
 
@@ -90,7 +91,14 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - Gold.
 - Weapon and armor upgrades from +1 to +3.
 
-### 5.5 Deliberate simplifications of the rules
+### 5.5 Saving (R-09)
+- One save slot, stored in `user://run.save` on the device.
+- Autosaves after every action, and when the app is paused, loses focus or closes. The save is written to a temp file first, so a kill mid-write can't corrupt it.
+- The random number generator's state is saved too. Reloading replays the same rolls, so quitting can't be used to reroll a bad outcome (save-scumming).
+- The save is deleted when the run ends (death or victory). This keeps permadeath (R-02).
+- Title screen shows **Continue (Floor N, Lv N class)** when a save exists. Starting a new run replaces the saved run; the button says so.
+
+### 5.6 Deliberate simplifications of the rules
 - One square per turn. Every awake monster acts once per hero turn, with no initiative order.
 - No death saves.
 - Wizard spell slots are a single pool, not tracked by spell level.
@@ -117,7 +125,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 
 | ID | Item | Status |
 |---|---|---|
-| B-01 | Save/resume a run when Android closes the app | Proposed |
+| B-01 | Save/resume a run when Android closes the app | Done (see R-09) |
 | B-02 | More classes (Cleric, Barbarian, Ranger) and spells with saving throws | Proposed |
 | B-03 | Inventory screen; shops between floors; scrolls and wands | Proposed |
 | B-04 | Ranged and spellcasting monsters | Proposed |
@@ -137,3 +145,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-18 | Initial build: R-01 to R-07, D-01 to D-07. |
 | 2026-11-19 | R-08 Controls screen added. |
 | 2026-11-19 | D-08: this file created as the source of truth. |
+| 2026-11-19 | B-01 built as R-09: autosave every turn, Continue on title, save deleted on death/victory. |

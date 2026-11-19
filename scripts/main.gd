@@ -59,6 +59,8 @@ var btn_descend: Button
 var btn_help: Button
 var controls_panel: Control
 var travel_timer: Timer
+var btn_start: Button
+var btn_continue: Button
 
 
 func _ready() -> void:
@@ -168,12 +170,18 @@ func _build_title() -> void:
 	ctl.pressed.connect(_show_controls)
 	v.add_child(ctl)
 
-	var start := Button.new()
-	start.text = "Descend"
-	start.custom_minimum_size = Vector2(0, 96)
-	start.add_theme_font_size_override("font_size", 32)
-	start.pressed.connect(_on_start)
-	v.add_child(start)
+	btn_continue = Button.new()
+	btn_continue.custom_minimum_size = Vector2(0, 96)
+	btn_continue.add_theme_font_size_override("font_size", 28)
+	btn_continue.add_theme_color_override("font_color", Color("7fc2ff"))
+	btn_continue.pressed.connect(_on_continue)
+	v.add_child(btn_continue)
+
+	btn_start = Button.new()
+	btn_start.custom_minimum_size = Vector2(0, 96)
+	btn_start.add_theme_font_size_override("font_size", 32)
+	btn_start.pressed.connect(_on_start)
+	v.add_child(btn_start)
 
 	var credits := _label("5E compatible. " + ATTRIBUTION, 14, Color(0.5, 0.5, 0.55))
 	v.add_child(credits)
@@ -310,6 +318,10 @@ func _toggle_controls() -> void:
 
 
 func _notification(what: int) -> void:
+	# R-09: save whenever Android pauses, backgrounds or closes the app.
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST]:
+		if game and game_screen and game_screen.visible:
+			game.save_run()
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if controls_panel and controls_panel.visible:
 			_hide_controls()
@@ -327,6 +339,14 @@ func _show_title() -> void:
 	game_screen.hide()
 	overlay.hide()
 	_update_desc()
+	var saved := Game.read_save()
+	btn_continue.visible = not saved.is_empty()
+	if saved.is_empty():
+		btn_start.text = "Descend"
+	else:
+		var sh: Dictionary = saved["hero"]
+		btn_continue.text = "Continue - Floor %d, Lv %d %s" % [saved["floor_num"], sh["level"], sh["cls"]]
+		btn_start.text = "New Run (replaces saved run)"
 
 
 func _on_class_pick(c: String) -> void:
@@ -346,8 +366,23 @@ func _update_desc() -> void:
 
 
 func _on_start() -> void:
+	Game.delete_save()
 	game = Game.new()
 	game.new_game(chosen_class, chosen_species)
+	_enter_game()
+
+
+func _on_continue() -> void:
+	var g := Game.new()
+	if not g.load_run():
+		Game.delete_save()  # unreadable save: drop it and stay on the title screen
+		_show_title()
+		return
+	game = g
+	_enter_game()
+
+
+func _enter_game() -> void:
 	map_view.game = game
 	title_screen.hide()
 	game_screen.show()
@@ -358,6 +393,7 @@ func _on_start() -> void:
 func _refresh() -> void:
 	if game == null:
 		return
+	game.save_run()  # R-09: autosave after every action (deletes the save once the run is over)
 	var hd: Dictionary = game.hero
 	var nxt := game.xp_next()
 	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d%s" % [
