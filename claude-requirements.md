@@ -51,7 +51,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | R-21 | Runs as a native Linux desktop app | Done | x86_64 binary built with `tools/build.sh`; installs to your user account with an app-menu entry. See D-14, 5.10. |
 | R-22 | Comfortable desktop controls: keyboard first, mouse supported | Done | Full keyboard play, left-click move/attack/travel, right-click inspect, wheel zoom, **Explore**, F11 fullscreen. See 5.10. |
 | R-23 | Graphics in a warm, chunky, hand-painted cartoon style, similar in feel to Spelunky 2 | Done | Original art only (D-15): textured rock walls with front faces, per-area textures, a sprite per class and per monster, torchlight around the hero, drop shadows, idle bob. Tiles are now the default display; ASCII stays available. See 5.8. |
-| R-24 | Installable on any x86_64 Linux distro that has Flatpak, with its dependencies installed automatically | In progress: manifest, metadata and `tools/build.sh flatpak` in repo; first build on Jim's machine pending | Single file `hollow-king.flatpak`; installing it pulls the Freedesktop runtime from Flathub (D-16). From B-11. |
+| R-24 | Installable on any x86_64 Linux distro that has Flatpak, with its dependencies installed automatically | Done: built and played on Jim's Fedora machine 2026-11-23 | Single file `hollow-king.flatpak`; installing it pulls the Freedesktop runtime from Flathub (D-16). From B-11. |
 
 ---
 
@@ -245,7 +245,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | B-08 | Verify all monster stats against SRD 5.2.1 (C-06) | Planned |
 | B-09 | Android export preset: AAB, API 36, signing (C-01, C-02) | Dropped (Linux only, D-14). A debug APK was built and played on Jim's phone 2026-11-19. |
 | B-10 | Balance pass: playtest all 6 classes to floor 20; tune `XP_MULT` and monster counts | Proposed |
-| B-11 | Package as Flatpak or AppImage for easy sharing with other Linux users | In progress as R-24 (Flatpak chosen by Jim 2026-11-23) |
+| B-11 | Package as Flatpak or AppImage for easy sharing with other Linux users | Done as R-24 (Flatpak chosen by Jim 2026-11-23) |
 
 ---
 
@@ -274,3 +274,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | R-22: controls moved from a right-hand sidebar to a strip under the map (status · log · 3×3 buttons). |
 | 2026-11-23 | R-18: title screen Controls / Settings / Credits / Quit are now a row of outlined buttons instead of small text links; 5.9 and `testing.html` B-01 updated. |
 | 2026-11-23 | B-11 → R-24: Flatpak packaging (D-16, C-13); game version 0.2.0 set in `project.godot`. |
+| 2026-11-23 | R-24 and B-11 → Done: first Flatpak build installs, runs and plays on Jim's machine. |
