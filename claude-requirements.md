@@ -45,7 +45,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | R-15 | Haptic feedback on phones | Dropped | Phone-only; removed with the Linux rebuild (D-14). |
 | R-16 | Optional tileset as an alternative to ASCII | Done | Original 16×16 pixel tileset; switch in Settings. From B-07. See 5.8. |
 | R-17 | Settings screen, remembered between sessions | Done | Sound, display mode (ASCII / Tiles), map zoom, fullscreen. |
-| R-18 | Clean, readable, attractive title screen | Done | Single centred column, clear selection state, class card with tagline, one primary button, legal text under Credits. See 5.9. |
+| R-18 | Clean, readable, attractive title screen | Done | Single centred column, clear selection state, class card with tagline, one primary button, a row of secondary buttons (Controls, Settings, Credits, Quit), legal text under Credits. See 5.9. |
 | R-19 | Pause menu and a way to quit | Done | In-game **Menu**: Resume, Controls, Settings, Save & return to title, Save & quit. Title screen has **Quit**. Esc opens the menu during a run. |
 | R-20 | Easy to play on a phone without a keyboard | Dropped | Replaced by R-22 (desktop controls) on 2026-11-23. Was: On-screen D-pad (hold to repeat), swipe to move, long-press to inspect, **Explore** auto-walk, map zoom setting, touch-first Controls screen. |
 | R-21 | Runs as a native Linux desktop app | Done | x86_64 binary built with `tools/build.sh`; installs to your user account with an app-menu entry. See D-14, 5.10. |
@@ -195,11 +195,11 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 
 ### 5.9 Visual style (R-18, D-11)
 - **Palette:** background `#0b0b12` with a faint warm glow at the top; panels `#13131c`, borders `#2a2a3a`; text `#e9e6dc`, muted text `#8d8a99`; accent gold `#e8c170`.
-- **Title screen**, top to bottom: title, tagline, CLASS chips (3×2), SPECIES chips, class card (name, role line, one-line tagline, details, species line), primary button (**Begin Descent**, or **Continue** when a save exists, with New Run below it), small links (Controls · Settings · Credits), one-line SRD note.
+- **Title screen**, top to bottom: title, tagline, CLASS chips (3×2), SPECIES chips, class card (name, role line, one-line tagline, details, species line), primary button (**Begin Descent**, or **Continue** when a save exists, with New Run below it), a row of four equal-width **secondary buttons** (Controls, Settings, Credits, Quit: outlined panels, 52 px tall, gold text and border on hover), one-line SRD note. Changed 2026-11-23 at Jim's request (were small text links).
 - **Selected chips** get a gold border and gold text. Content is a fixed-width centred column (620 px) in the middle of the window.
 - **Window:** opens at 1280×800, resizable (minimum 1024×640); the UI is designed at 1600×1000 and scales with the window. F11 or Settings toggles fullscreen.
 - **Pause menu (R-19):** opened by the in-game **Menu** button or Esc. Resume (gold primary), Controls, Settings, Save & return to title, Save & quit. Settings moves into this menu; the in-game controls are described in 5.10.
-- **Quitting:** title screen links are Controls · Settings · Credits · Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
+- **Quitting:** the title screen's secondary buttons are Controls, Settings, Credits and Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
 
 ### 5.10 Desktop layout and controls (R-21, R-22)
 - **Game screen:** map across the full width at the top; a **control strip under the map** (about 210 px) with three parts side by side: status on the left, the message log in the middle (fills the space), and the action buttons on the right in a 3×3 grid (Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Wait, Controls, Menu). Buttons a class doesn't use are hidden. Changed 2026-11-23 at Jim's request (was: sidebar on the right).
@@ -269,3 +269,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | D-10: `testing.html` rewritten for the Linux build (85 steps, sections A–N) with a full graphics section (D–G) showing sprite thumbnails; `tools/make_tiles.py` now also writes `art/tiles_index.js`. |
 | 2026-11-23 | D-10: tile index built into `testing.html` (no separate `art/tiles_index.js`); clearer warning when `art/tiles.png` can't be found. |
 | 2026-11-23 | R-22: controls moved from a right-hand sidebar to a strip under the map (status · log · 3×3 buttons). |
+| 2026-11-23 | R-18: title screen Controls / Settings / Credits / Quit are now a row of outlined buttons instead of small text links; 5.9 and `testing.html` B-01 updated. |

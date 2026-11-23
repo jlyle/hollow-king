@@ -292,18 +292,13 @@ func _build_title() -> void:
 	col.add_child(btn_start)
 	col.add_child(_spacer(18))
 
-	# Quiet links
-	var links := HBoxContainer.new()
-	links.alignment = BoxContainer.ALIGNMENT_CENTER
-	links.add_theme_constant_override("separation", 6)
-	col.add_child(links)
-	var first := true
+	# Secondary actions: a row of equal buttons under the primary one
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	col.add_child(row)
 	for pair in [["Controls", _show_controls], ["Settings", _show_settings], ["Credits", _show_credits], ["Quit", _quit_game]]:
-		if not first:
-			links.add_child(_label("·", 18, c_line.lightened(0.3)))
-		first = false
-		links.add_child(_link_button(pair[0], pair[1]))
-	col.add_child(_spacer(8))
+		row.add_child(_secondary_button(pair[0], pair[1]))
+	col.add_child(_spacer(14))
 	var foot := _label("5E compatible  ·  Rules from SRD 5.2.1 (CC-BY-4.0), see Credits", 12, c_muted.darkened(0.25))
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(foot)
@@ -1104,14 +1099,22 @@ func _ornament() -> HBoxContainer:
 	return row
 
 
-func _link_button(text: String, cb: Callable) -> Button:
+## Outlined panel button for secondary actions (Controls, Settings, Credits, Quit).
+## Same height and width as its neighbours; the gold primary button stays the only filled one (D-11).
+func _secondary_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.flat = true
+	b.custom_minimum_size = Vector2(0, 52)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.add_theme_font_size_override("font_size", 18)
-	b.add_theme_color_override("font_color", c_muted)
+	b.add_theme_stylebox_override("normal", _box(c_panel, c_line, 1, 10))
+	b.add_theme_stylebox_override("hover", _box(c_panel.lightened(0.06), c_gold.darkened(0.2), 1, 10))
+	b.add_theme_stylebox_override("pressed", _box(c_panel.darkened(0.2), c_gold, 1, 10))
+	b.add_theme_stylebox_override("hover_pressed", _box(c_panel.darkened(0.2), c_gold, 1, 10))
+	b.add_theme_color_override("font_color", c_text)
 	b.add_theme_color_override("font_hover_color", c_gold)
 	b.add_theme_color_override("font_pressed_color", c_gold)
+	b.add_theme_color_override("font_hover_pressed_color", c_gold)
 	b.pressed.connect(cb)
 	return b
 
