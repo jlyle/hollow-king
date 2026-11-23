@@ -182,7 +182,8 @@ EOF
 	info "    gh release create v$ver $dir/* --title \"v$ver\" --notes \"Free download for Linux\""
 }
 
-case "${1:-}" in
+CMD="${1:-}"; CMD="${CMD%.}"    # tolerate a stray trailing dot ("run.")
+case "$CMD" in
 	check) check ;;
 	build) build ;;
 	run) run ;;
