@@ -335,14 +335,14 @@ func say(text: String) -> void:
 		log_lines.pop_front()
 
 
-func monster_at(p: Vector2i):
+func monster_at(p: Vector2i) -> Variant:
 	for m in monsters:
 		if m["hp"] > 0 and m["pos"] == p:
 			return m
 	return null
 
 
-func visible_monster_at(p: Vector2i):
+func visible_monster_at(p: Vector2i) -> Variant:
 	if not _in_bounds(p) or vis[p.y * w + p.x] == 0:
 		return null
 	return monster_at(p)
@@ -1502,7 +1502,7 @@ func _hero_save_damage(ability: String, dc: int, dmg: int, half: bool) -> Array:
 	return [dmg, false]
 
 
-func _wounded_ally(m: Dictionary, rng_sq: int):
+func _wounded_ally(m: Dictionary, rng_sq: int) -> Variant:
 	var best = null
 	var best_frac := 0.6  # only heal allies below 60% HP
 	for o in monsters:
@@ -1743,7 +1743,7 @@ func _visible_monsters_by_distance() -> Array:
 
 
 ## Preferred enemy if still visible, else the selected target, else the nearest visible enemy.
-func _pick_target(pref, remember := true):
+func _pick_target(pref, remember := true) -> Variant:
 	var chosen = null
 	for cand in [pref, target]:
 		if cand != null and cand["hp"] > 0:
@@ -1760,7 +1760,7 @@ func _pick_target(pref, remember := true):
 	return chosen
 
 
-func _free_neighbor(p: Vector2i):
+func _free_neighbor(p: Vector2i) -> Variant:
 	var dirs: Array = DungeonGen.DIRS.duplicate()
 	_shuffle(dirs)
 	for item in dirs:
