@@ -345,7 +345,7 @@ func _build_game() -> void:
 	h.add_theme_constant_override("separation", 18)
 	strip.add_child(h)
 
-	status_label = _label("", 19, Color(0.93, 0.9, 0.82))
+	status_label = _label("", 19, Color("ff3b3b"))   ## 5.10: bright red at Jim's request
 	status_label.custom_minimum_size = Vector2(330, 0)
 	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(status_label)
