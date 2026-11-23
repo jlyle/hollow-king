@@ -231,6 +231,13 @@ const SECTIONS = [
     ["O-05", "R-24", "Open GNOME Software or KDE Discover on that PC and search for the game.", "Shows the name, summary and description (from the metainfo file)."],
     ["O-06", "R-24", "Run <code>flatpak uninstall --user io.github.jlyle.HollowKing</code>.", "Game is removed; <code>flatpak uninstall --user --unused</code> can then remove the runtime if nothing else uses it."],
   ]},
+  { key: "P", title: "P. Free release and licences", intro: "Run before uploading a new version to itch.io or GitHub Releases.", items: [
+    ["P-01", "C-14", "Title screen: open Credits.", "Shows GAME, ART & SOUND, LICENCE (MIT / CC-BY-4.0), RULES (full SRD text) and ENGINE (Godot MIT notice)."],
+    ["P-02", "R-25", "Run <code>tools/build.sh release</code>.", "builds/release/ holds hollow-king-&lt;ver&gt;-linux-x86_64.tar.gz, hollow-king-&lt;ver&gt;.flatpak and SHA256SUMS; the version matches project.godot."],
+    ["P-03", "D-17", "Unpack the tar.gz in a temp folder and list it.", "Contains hollow-king.x86_64 (executable), LICENSE, LICENSES.md, icon.png, README.txt; <code>./hollow-king.x86_64</code> starts the game."],
+    ["P-04", "R-25", "Run <code>cd builds/release && sha256sum -c SHA256SUMS</code>.", "Both files report OK."],
+    ["P-05", "R-25", "After uploading: open the itch.io page and the GitHub Release while signed out (private window).", "Both are free to download with no sign-in; the itch page shows Linux; the GitHub repo is public (C-15)."],
+  ]},
 ];
 
 const KEY = "hollowking-smoketest-v3";

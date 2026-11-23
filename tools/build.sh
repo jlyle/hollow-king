@@ -8,6 +8,7 @@
 #   tools/build.sh uninstall   remove the installed binary, icon and menu entry (keeps saves)
 #   tools/build.sh flatpak     build builds/hollow-king.flatpak (one file for any x86_64 distro) and install it for you
 #   tools/build.sh flatpak-run run the installed Flatpak
+#   tools/build.sh release     build both downloads for itch.io / GitHub Releases into builds/release/ (R-25)
 #
 # Override the Godot command with GODOT=..., e.g.  GODOT="flatpak run org.godotengine.Godot" tools/build.sh build
 set -euo pipefail
@@ -132,6 +133,46 @@ flatpak_run() {
 	exec flatpak run "$APP_ID"
 }
 
+# --- Free public release (R-25, D-17) ----------------------------------------------------
+
+release() {
+	local ver dir name
+	ver="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
+	[ -n "$ver" ] || { info "No config/version in project.godot"; exit 1; }
+	flatpak_build
+	dir="builds/release"
+	name="hollow-king-$ver-linux-x86_64"
+	info "Packing release $ver into $dir"
+	rm -rf "$dir"; mkdir -p "$dir/$name"
+	cp "$BIN" "$dir/$name/hollow-king.x86_64"
+	chmod +x "$dir/$name/hollow-king.x86_64"
+	cp LICENSE LICENSES.md "$dir/$name/"
+	cp art/icon_512.png "$dir/$name/icon.png"
+	cat > "$dir/$name/README.txt" <<EOF
+Depths of the Hollow King $ver - free and open source (see LICENSES.md)
+
+Run:   ./hollow-king.x86_64
+Needs: 64-bit Linux with OpenGL 3.3 graphics. Saves go in
+       ~/.local/share/godot/app_userdata/Depths of the Hollow King/
+
+Prefer a sandboxed app-menu install? Use hollow-king-$ver.flatpak instead:
+       flatpak install --user hollow-king-$ver.flatpak
+
+Source: https://github.com/jlyle/hollow-king
+EOF
+	tar -C "$dir" -czf "$dir/$name.tar.gz" "$name"     # tar keeps the executable bit; zip may not
+	rm -rf "${dir:?}/$name"
+	cp builds/hollow-king.flatpak "$dir/hollow-king-$ver.flatpak"
+	(cd "$dir" && sha256sum ./*.tar.gz ./*.flatpak > SHA256SUMS)
+	ls -lh "$dir"
+	ok "Release $ver ready in $dir"
+	info "itch.io (butler):"
+	info "    butler push $dir/$name.tar.gz jlyle/hollow-king:linux --userversion $ver"
+	info "    butler push $dir/hollow-king-$ver.flatpak jlyle/hollow-king:linux-flatpak --userversion $ver"
+	info "GitHub Release (gh CLI):"
+	info "    gh release create v$ver $dir/* --title \"v$ver\" --notes \"Free download for Linux\""
+}
+
 case "${1:-}" in
 	check) check ;;
 	build) build ;;
@@ -140,5 +181,6 @@ case "${1:-}" in
 	uninstall) uninstall ;;
 	flatpak) flatpak_build ;;
 	flatpak-run) flatpak_run ;;
-	*) sed -n '2,12p' "$SELF" | sed 's/^# \{0,1\}//'; exit 1 ;;
+	release) release ;;
+	*) sed -n '2,13p' "$SELF" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

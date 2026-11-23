@@ -92,21 +92,28 @@ testing.html           smoke-test checklist (open in Chrome from this folder; gr
 tools/make_sounds.py   regenerates audio/  (python3 + numpy)
 tools/make_tiles.py    paints the whole tileset (python3 + Pillow): edit colours/shapes there, re-run, done
 tools/make_icons.py    regenerates art/icon_512.png (app-menu icon) from the hero sprite
-tools/build.sh         Linux build: check | build | run | install | uninstall
+tools/build.sh         Linux build: check | build | run | install | uninstall | flatpak | flatpak-run | release
+LICENSE, LICENSES.md   MIT for code; CC-BY-4.0 for art, sound and text; SRD and Godot notices (D-17)
 packaging/             app-menu (.desktop) entry template; packaging/flatpak/ = Flatpak manifest, desktop entry, app-store metadata
 export_presets.cfg     "Linux" export preset (x86_64, PCK embedded in the binary)
 ```
 To change the art, edit `tools/make_tiles.py` and run it; it rewrites `art/tiles.png` and `scripts/tile_atlas.gd` together.
 Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` floor ranges in `game_data.gd`; monster count formula in `Game._spawn()`.
 
+## Free release (R-25)
+`tools/build.sh release` builds everything and puts the downloads in `builds/release/`:
+`hollow-king-<ver>-linux-x86_64.tar.gz` (plain binary), `hollow-king-<ver>.flatpak`, and `SHA256SUMS`.
+Upload them to itch.io (free, "Downloadable", Linux) and to a GitHub Release; the script prints the `butler` and `gh` commands.
+Bump `config/version` in `project.godot` before each new release.
+
 ## Legal
 - Rules content is used under CC-BY-4.0 from SRD 5.2.1. The full attribution is on the in-game **Credits** screen and below.
 - Don't use "Dungeons & Dragons", "D&D", or Wizards' logos/settings in the name, icon or any release page. "5E compatible" is allowed.
-- The Hollow King, all text, and the code are original.
+- The Hollow King, all text, and the code are original. Free and open source: code under [MIT](LICENSE); art, sound and text under CC-BY-4.0. Details in [LICENSES.md](LICENSES.md).
 
 > This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
 ## Suggested next steps
 1. Inventory screen, shops between floors, scrolls/wands.
 2. Balance pass across all six classes.
-3. Publish the Flatpak on Flathub (needs a licence decision and a public repo).
+3. Publish the Flatpak on Flathub (B-12).

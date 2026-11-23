@@ -5,9 +5,9 @@
   <name>Depths of the Hollow King</name>
   <summary>Turn-based roguelike with 5E-compatible rules</summary>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>MIT AND CC-BY-4.0</project_license>
   <developer id="io.github.jlyle">
-    <name>Jim</name>
+    <name>Jim Lyle</name>
   </developer>
   <description>
     <p>
