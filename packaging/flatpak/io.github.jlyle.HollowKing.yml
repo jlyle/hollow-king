@@ -1,0 +1,30 @@
+# Flatpak manifest for Depths of the Hollow King (R-24, D-16).
+# Build with:  tools/build.sh flatpak
+# The script stages these files plus the exported game binary in builds/flatpak/ and runs flatpak-builder there.
+app-id: io.github.jlyle.HollowKing
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: hollow-king
+finish-args:
+  - --share=ipc          # X11 shared memory
+  - --socket=x11         # game window (works under Wayland via XWayland)
+  - --device=dri         # GPU (OpenGL 3.3, GL Compatibility renderer)
+  - --socket=pulseaudio  # sound (PulseAudio or PipeWire)
+modules:
+  - name: hollow-king
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 hollow-king.x86_64 /app/bin/hollow-king
+      - install -Dm644 icon_512.png /app/share/icons/hicolor/512x512/apps/io.github.jlyle.HollowKing.png
+      - install -Dm644 io.github.jlyle.HollowKing.desktop /app/share/applications/io.github.jlyle.HollowKing.desktop
+      - install -Dm644 io.github.jlyle.HollowKing.metainfo.xml /app/share/metainfo/io.github.jlyle.HollowKing.metainfo.xml
+    sources:
+      - type: file
+        path: hollow-king.x86_64
+      - type: file
+        path: icon_512.png
+      - type: file
+        path: io.github.jlyle.HollowKing.desktop
+      - type: file
+        path: io.github.jlyle.HollowKing.metainfo.xml

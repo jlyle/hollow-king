@@ -6,6 +6,8 @@
 #   tools/build.sh run         build if needed, then run the binary
 #   tools/build.sh install     build, then install for your user with an app-menu entry
 #   tools/build.sh uninstall   remove the installed binary, icon and menu entry (keeps saves)
+#   tools/build.sh flatpak     build builds/hollow-king.flatpak (one file for any x86_64 distro) and install it for you
+#   tools/build.sh flatpak-run run the installed Flatpak
 #
 # Override the Godot command with GODOT=..., e.g.  GODOT="flatpak run org.godotengine.Godot" tools/build.sh build
 set -euo pipefail
@@ -18,6 +20,9 @@ INSTALL_BIN="$HOME/.local/bin/hollow-king"
 INSTALL_ICON="$HOME/.local/share/icons/hicolor/512x512/apps/hollow-king.png"
 INSTALL_DESKTOP="$HOME/.local/share/applications/hollow-king.desktop"
 SAVE_DIR="$HOME/.local/share/godot/app_userdata/Depths of the Hollow King"
+APP_ID="io.github.jlyle.HollowKing"                       # D-16 - never change once shared
+RUNTIME_VER="25.08"                                       # org.freedesktop.Platform branch (D-16)
+FLATHUB="https://dl.flathub.org/repo/flathub.flatpakrepo"
 
 ok()   { printf '  \e[32mOK\e[0m   %s\n' "$*"; }
 bad()  { printf '  \e[31mFIX\e[0m  %s\n' "$*"; FAILED=1; }
@@ -47,6 +52,7 @@ check() {
 	fi
 	if [ -x "$BIN" ]; then ok "Built binary: $BIN"; else info "  not built yet (run: tools/build.sh build)"; fi
 	if [ -x "$INSTALL_BIN" ]; then ok "Installed: $INSTALL_BIN"; else info "  not installed (run: tools/build.sh install)"; fi
+	if command -v flatpak-builder >/dev/null; then ok "flatpak-builder (for: tools/build.sh flatpak)"; else info "  flatpak-builder not installed (only needed for the Flatpak: sudo dnf install flatpak-builder)"; fi
 	case ":$PATH:" in *":$HOME/.local/bin:"*) ok "~/.local/bin is on your PATH" ;; *) info "  ~/.local/bin is not on PATH (the app-menu entry still works)" ;; esac
 	[ "$FAILED" = 0 ] && info "All set." || { info "Fix the items marked FIX, then run this again."; return 1; }
 }
@@ -92,11 +98,47 @@ uninstall() {
 	info "Your saves and settings are still in: $SAVE_DIR"
 }
 
+# --- Flatpak (R-24, D-16) ---------------------------------------------------------------
+
+flatpak_build() {
+	command -v flatpak >/dev/null || { info "Flatpak isn't installed: sudo dnf install flatpak"; exit 1; }
+	command -v flatpak-builder >/dev/null || { info "flatpak-builder isn't installed: sudo dnf install flatpak-builder"; exit 1; }
+	info "Making sure the Flathub remote and the $RUNTIME_VER runtime + SDK are installed (first time: ~1 GB)"
+	flatpak remote-add --user --if-not-exists flathub "$FLATHUB"
+	flatpak install --user --noninteractive flathub "org.freedesktop.Platform//$RUNTIME_VER" "org.freedesktop.Sdk//$RUNTIME_VER"
+
+	build
+	info "Staging Flatpak sources in builds/flatpak/src"
+	rm -rf builds/flatpak/src
+	mkdir -p builds/flatpak/src
+	cp packaging/flatpak/* builds/flatpak/src/
+	cp "$BIN" builds/flatpak/src/hollow-king.x86_64
+	cp art/icon_512.png builds/flatpak/src/
+
+	info "Building the Flatpak and installing it for $USER"
+	flatpak-builder --user --install --force-clean --disable-rofiles-fuse \
+		--repo=builds/flatpak/repo builds/flatpak/build-dir "builds/flatpak/src/$APP_ID.yml"
+
+	info "Writing the single-file bundle"
+	flatpak build-bundle --runtime-repo="$FLATHUB" builds/flatpak/repo builds/hollow-king.flatpak "$APP_ID"
+	ls -lh builds/hollow-king.flatpak
+	ok "Installed on this PC: start it from the app menu or run  tools/build.sh flatpak-run"
+	info "To give it to someone: send builds/hollow-king.flatpak. They run:"
+	info "    flatpak install --user hollow-king.flatpak"
+	info "(the runtime it needs is downloaded from Flathub automatically)"
+}
+
+flatpak_run() {
+	exec flatpak run "$APP_ID"
+}
+
 case "${1:-}" in
 	check) check ;;
 	build) build ;;
 	run) run ;;
 	install) install ;;
 	uninstall) uninstall ;;
-	*) sed -n '2,10p' "$SELF" | sed 's/^# \{0,1\}//'; exit 1 ;;
+	flatpak) flatpak_build ;;
+	flatpak-run) flatpak_run ;;
+	*) sed -n '2,12p' "$SELF" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

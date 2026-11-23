@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- App-store metadata (GNOME Software, KDE Discover) for the Flatpak (R-24, D-16). -->
+<component type="desktop-application">
+  <id>io.github.jlyle.HollowKing</id>
+  <name>Depths of the Hollow King</name>
+  <summary>Turn-based roguelike with 5E-compatible rules</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <developer id="io.github.jlyle">
+    <name>Jim</name>
+  </developer>
+  <description>
+    <p>
+      Twenty procedurally generated floors, one hero, and the Hollow King waiting at the bottom.
+      Every run builds a new dungeon. Choose from six classes and four species, cast spells,
+      make saving throws, and fight archers, spellcasters and mini-bosses on your way down.
+    </p>
+    <ul>
+      <li>Turn-based, grid combat with 5E-compatible rules (2024 SRD 5.2.1)</li>
+      <li>Fighter, Rogue, Barbarian, Ranger, Wizard and Cleric</li>
+      <li>Hand-painted cartoon art, torchlit dungeons, original sound effects</li>
+      <li>Keyboard and mouse controls, autosave and resume</li>
+    </ul>
+    <p>
+      This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of
+      the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the
+      Creative Commons Attribution 4.0 International License, available at
+      https://creativecommons.org/licenses/by/4.0/legalcode.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.jlyle.HollowKing.desktop</launchable>
+  <url type="homepage">https://github.com/jlyle/hollow-king</url>
+  <categories>
+    <category>Game</category>
+    <category>RolePlaying</category>
+  </categories>
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-fantasy">moderate</content_attribute>
+  </content_rating>
+  <requires>
+    <control>keyboard</control>
+  </requires>
+  <supports>
+    <control>pointing</control>
+  </supports>
+  <releases>
+    <release version="0.2.0" date="2026-11-23">
+      <description>
+        <p>First Flatpak release: Linux desktop version with cartoon graphics.</p>
+      </description>
+    </release>
+  </releases>
+</component>

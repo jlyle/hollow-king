@@ -23,6 +23,15 @@ Then, from this folder:
 | `tools/build.sh install` | Installs for your user: `~/.local/bin/hollow-king` + app-menu entry (Games) + icon |
 | `tools/build.sh uninstall` | Removes the binary, icon and menu entry (keeps saves) |
 
+### Flatpak (share with any Linux distro)
+```bash
+sudo dnf install flatpak-builder     # once
+tools/build.sh flatpak               # builds builds/hollow-king.flatpak and installs it for you
+```
+Send `builds/hollow-king.flatpak` to anyone on x86_64 Linux with Flatpak; they install it with
+`flatpak install --user hollow-king.flatpak`, and the runtime it needs comes from Flathub automatically.
+The Flatpak keeps its saves in `~/.var/app/io.github.jlyle.HollowKing/`.
+
 For development you can also press **F5** in the Godot editor (`godot -e --path .`).
 Saves and settings live in `~/.local/share/godot/app_userdata/Depths of the Hollow King/`.
 
@@ -84,7 +93,7 @@ tools/make_sounds.py   regenerates audio/  (python3 + numpy)
 tools/make_tiles.py    paints the whole tileset (python3 + Pillow): edit colours/shapes there, re-run, done
 tools/make_icons.py    regenerates art/icon_512.png (app-menu icon) from the hero sprite
 tools/build.sh         Linux build: check | build | run | install | uninstall
-packaging/             app-menu (.desktop) entry template
+packaging/             app-menu (.desktop) entry template; packaging/flatpak/ = Flatpak manifest, desktop entry, app-store metadata
 export_presets.cfg     "Linux" export preset (x86_64, PCK embedded in the binary)
 ```
 To change the art, edit `tools/make_tiles.py` and run it; it rewrites `art/tiles.png` and `scripts/tile_atlas.gd` together.
@@ -100,4 +109,4 @@ Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` 
 ## Suggested next steps
 1. Inventory screen, shops between floors, scrolls/wands.
 2. Balance pass across all six classes.
-3. Flatpak or AppImage package for sharing with other Linux users (B-11).
+3. Publish the Flatpak on Flathub (needs a licence decision and a public repo).
