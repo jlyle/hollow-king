@@ -94,12 +94,15 @@
     <b>Pass</b>, <b>Fail</b> or <b>Skip</b>; on a failure, type what you saw in the note box. Results are saved in this browser
     (open the page the same way each time). When done, click <b>Copy results</b> and paste them to Claude.
     IDs in grey (R-, C-, D-) match <code>claude-requirements.md</code>.</p>
-  <p class="tip warn" id="noart" style="display:none">Sprite thumbnails can't load. Open this file from the project folder
-    (<code>~/git/hollow-king/testing.html</code>) so it can find <code>art/tiles.png</code> and <code>art/tiles_index.js</code>.</p>
+  <p class="tip warn" id="noart" style="display:none"></p>
   <div id="list"></div>
 </main>
 
-<script src="art/tiles_index.js"></script>
+<script>
+// TILE_ATLAS:BEGIN (written by tools/make_tiles.py - tile name -> atlas index)
+window.TILE_ATLAS = {cell: 64, cols: 8, width: 512, height: 640, index: {"cellars_top_a": 0, "cellars_top_b": 1, "cellars_face_a": 2, "cellars_face_b": 3, "cellars_floor_a": 4, "cellars_floor_b": 5, "warrens_top_a": 6, "warrens_top_b": 7, "warrens_face_a": 8, "warrens_face_b": 9, "warrens_floor_a": 10, "warrens_floor_b": 11, "caverns_top_a": 12, "caverns_top_b": 13, "caverns_face_a": 14, "caverns_face_b": 15, "caverns_floor_a": 16, "caverns_floor_b": 17, "crypts_top_a": 18, "crypts_top_b": 19, "crypts_face_a": 20, "crypts_face_b": 21, "crypts_floor_a": 22, "crypts_floor_b": 23, "forge_top_a": 24, "forge_top_b": 25, "forge_face_a": 26, "forge_face_b": 27, "forge_floor_a": 28, "forge_floor_b": 29, "throne_top_a": 30, "throne_top_b": 31, "throne_face_a": 32, "throne_face_b": 33, "throne_floor_a": 34, "throne_floor_b": 35, "water": 36, "lava": 37, "stairs": 38, "sealed": 39, "potion": 40, "greater": 41, "gold": 42, "weapon": 43, "armor": 44, "hero_fighter": 45, "hero_rogue": 46, "hero_barbarian": 47, "hero_ranger": 48, "hero_wizard": 49, "hero_cleric": 50, "m_rat": 51, "m_wolf": 52, "m_spider": 53, "m_kobold": 54, "m_kobold_shaman": 55, "m_goblin": 56, "m_goblin_archer": 57, "m_hobgoblin": 58, "m_cult_acolyte": 59, "m_dark_adept": 60, "m_necromancer": 61, "m_skeleton": 62, "m_skeleton_archer": 63, "m_zombie": 64, "m_ghoul": 65, "m_wight": 66, "m_wraith": 67, "m_bugbear": 68, "m_ogre": 69, "m_minotaur": 70, "m_troll": 71, "m_giant": 72, "m_warchief": 73, "m_oracle": 74, "m_bone_warden": 75, "m_hollow_king": 76}};
+// TILE_ATLAS:END
+</script>
 <script>
 // Each step: [id, requirement, what to do, what you should see, optional tile thumbnails]
 // Thumbnails come straight from art/tiles.png, so they always match the current art.
@@ -239,9 +242,17 @@ const allItems = SECTIONS.flatMap(s => s.items);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const plain = html => { const d = document.createElement("div"); d.innerHTML = html; return d.textContent; };
 
-// Sprite thumbnails from art/tiles.png via art/tiles_index.js
+// Sprite thumbnails from art/tiles.png (index is built into this page above)
 const ATLAS = window.TILE_ATLAS;
-if (!ATLAS) document.getElementById("noart").style.display = "block";
+const probe = new Image();
+probe.onerror = () => {
+  const w = document.getElementById("noart");
+  w.innerHTML = "Sprite thumbnails can't load: <code>art/tiles.png</code> was not found next to this page " +
+    "(looked in <code>" + esc(new URL("art/tiles.png", location.href).pathname) + "</code>). " +
+    "Open <code>testing.html</code> from the project folder after <code>git pull</code>.";
+  w.style.display = "block";
+};
+probe.src = "art/tiles.png";
 function sprite(name, px) {
   if (!ATLAS || !(name in ATLAS.index)) return `<div class="sprite" title="${esc(name)}"></div>`;
   const i = ATLAS.index[name], k = px / ATLAS.cell;
