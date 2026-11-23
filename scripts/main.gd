@@ -78,7 +78,7 @@ var title_screen: Control
 var game_screen: Control
 var overlay: Control
 var overlay_label: Label
-var status_label: Label
+var status_label: RichTextLabel
 var log_label: RichTextLabel
 var map_view: MapView
 var btn_wait: Button
@@ -345,7 +345,13 @@ func _build_game() -> void:
 	h.add_theme_constant_override("separation", 18)
 	strip.add_child(h)
 
-	status_label = _label("", 19, Color("ff3b3b"))   ## 5.10: bright red at Jim's request
+	status_label = RichTextLabel.new()   ## 5.10: values in bright red (STATUS_VALUE), labels in normal text
+	status_label.bbcode_enabled = true
+	status_label.fit_content = true
+	status_label.scroll_active = false
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.add_theme_font_size_override("normal_font_size", 19)
+	status_label.add_theme_color_override("default_color", Color(0.93, 0.9, 0.82))
 	status_label.custom_minimum_size = Vector2(330, 0)
 	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(status_label)
@@ -565,6 +571,14 @@ func _enter_game() -> void:
 	_refresh()
 
 
+const STATUS_VALUE := "ff3b3b"   ## 5.10: bright red for the numbers in the status panel
+
+
+## Wraps a status value in bright red (5.10).
+func _val(t: String) -> String:
+	return "[color=#%s]%s[/color]" % [STATUS_VALUE, t]
+
+
 func _refresh() -> void:
 	if game == null:
 		return
@@ -573,10 +587,11 @@ func _refresh() -> void:
 	_update_music()
 	var hd: Dictionary = game.hero
 	var nxt := game.xp_next()
-	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d\n%s" % [
-		game.floor_num, Game.MAX_FLOOR, game.floor_theme["name"],
-		hd["species"], hd["cls"], hd["level"], hd["hp"], hd["hp_max"], game.hero_ac(),
-		hd["xp"], (str(nxt) if nxt > 0 else "max"), hd["gold"], game.status_extra()]
+	status_label.text = "Floor %s - %s\n%s %s  Lv %s  HP %s  AC %s\nXP %s  Gold %s\n%s" % [
+		_val("%d/%d" % [game.floor_num, Game.MAX_FLOOR]), game.floor_theme["name"],
+		hd["species"], hd["cls"], _val(str(hd["level"])), _val("%d/%d" % [hd["hp"], hd["hp_max"]]),
+		_val(str(game.hero_ac())), _val("%d/%s" % [hd["xp"], (str(nxt) if nxt > 0 else "max")]),
+		_val(str(hd["gold"])), String(game.status_extra()).replace("[", "[lb]")]
 	log_label.text = "\n".join(PackedStringArray(game.log_lines))
 
 	var pots: int = hd["potions"] + hd["greater"]

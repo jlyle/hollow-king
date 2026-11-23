@@ -216,7 +216,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 - **Quitting:** the title screen's secondary buttons are Controls, Settings, Credits and Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
 
 ### 5.10 Desktop layout and controls (R-21, R-22)
-- **Game screen:** map across the full width at the top; a **control strip under the map** (about 210 px) with three parts side by side: status on the left (bright red text `#ff3b3b`, Jim's request 2026-11-23), the message log in the middle (fills the space), and the action buttons on the right in a 3×3 grid (Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Wait, Controls, Menu). Buttons a class doesn't use are hidden. Changed 2026-11-23 at Jim's request (was: sidebar on the right).
+- **Game screen:** map across the full width at the top; a **control strip under the map** (about 210 px) with three parts side by side: status on the left (labels in normal text, **values** such as `18/18`, `19`, `0/300` in bright red `#ff3b3b`; Jim's request 2026-11-23), the message log in the middle (fills the space), and the action buttons on the right in a 3×3 grid (Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Wait, Controls, Menu). Buttons a class doesn't use are hidden. Changed 2026-11-23 at Jim's request (was: sidebar on the right).
 - **Keyboard (primary):** arrows / WASD / HJKL + YUBN / numpad move and attack; Space or `.` wait; Enter descend; Q potion; F ability; E ranged; R spells (Reckless for Barbarian); X explore; `+` / `-` zoom; F11 fullscreen; `?` / F1 controls; Esc pause menu (quit on the title screen).
 - **Mouse:** left-click a neighbouring square to move/attack; left-click a distant explored square to auto-walk; left-click an enemy to select it (casters/Ranger also attack); **right-click** to inspect any square; **mouse wheel** to zoom.
 - **Explore:** auto-walks to the nearest unexplored area or visible item; stops when an enemy appears or you're hurt. When nothing is left, it walks to the stairs.
@@ -294,3 +294,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | R-26 background music (D-18) added; R-08, R-17 and 5.8 updated for the Music settings and `M` key. |
 | 2026-11-23 | D-19: level-1 heroes get +6 HP (5.2, 5.7). |
 | 2026-11-23 | 5.10: status text (floor, HP, AC, XP, gold) is bright red at Jim's request. |
+| 2026-11-23 | 5.10 corrected: only the status **values** are bright red; labels (Floor, HP, AC, XP, Gold) keep their normal colour. |
