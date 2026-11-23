@@ -353,7 +353,6 @@ func _build_game() -> void:
 	h.add_child(actions_grid)
 	actions_grid.add_theme_constant_override("h_separation", 8)
 	actions_grid.add_theme_constant_override("v_separation", 8)
-	v.add_child(actions_grid)
 	btn_potion = _action_button(actions_grid, "Potion  (Q)", _on_potion)
 	btn_ability = _action_button(actions_grid, "Ability  (F)", _on_ability)
 	btn_ranged = _action_button(actions_grid, "Ranged  (E)", _on_ranged)
