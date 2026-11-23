@@ -79,6 +79,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | D-16 | Flatpak packaging | App ID `io.github.jlyle.HollowKing` (**permanent once shared** — changing it later makes it a different app). Runtime `org.freedesktop.Platform` **25.08** (supported to Aug 2027; move to the next August release before then). Bundles the exported Godot binary; permissions: X11 + GPU + audio only (no network, no file access). Bundle built with `--runtime-repo` = Flathub so installs fetch the runtime. Files in `packaging/flatpak/` | 2026-11-23 |
 | D-17 | Open-source licences | Code: **MIT** (`LICENSE`). Original art, sound and text: **CC-BY-4.0**. Rules text: SRD 5.2.1 under CC-BY-4.0 (C-04). Godot Engine: MIT, notice shown on Credits (C-14). Summary in `LICENSES.md`; metainfo `project_license` = `MIT AND CC-BY-4.0`. Chosen by Jim 2026-11-23 | 2026-11-23 |
 | D-18 | How music is made | Original, composed and synthesized by `tools/make_music.py` (numpy + ffmpeg) with GM-style instruments (brass, strings, harpsichord, organ, flute, square lead, slap-ish bass, drum kit, orchestra hit). Saved as looping mono OGG (`audio/music_*.ogg`), so no MIDI player is needed in Godot. Same licence as other assets (D-17). | 2026-11-23 |
+| D-19 | Tougher level-1 heroes | +6 max HP at level 1 on top of the SRD formula (house rule, see 5.7). Asked for by Jim 2026-11-23: level-1 heroes died too easily. Existing saved runs keep their old HP | 2026-11-23 |
 
 ---
 
@@ -101,6 +102,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 ### 5.2 Hero
 - **Classes:** Fighter, Rogue, Wizard, Cleric, Barbarian, Ranger. **Species:** Human, Dwarf, Halfling, Orc.
 - Ability scores use the standard array plus a +2/+1 background bonus.
+- **Starting HP (D-19):** max Hit Die + CON modifier + **6 bonus HP** at level 1 (Fighter 18, Rogue 16, Barbarian 20, Ranger 18, Wizard 14, Cleric 16; Dwarf +1). The bonus stays in max HP at every level. Tuning knob: `START_HP_BONUS` in `game.gd`.
 - Also implemented: proficiency bonus, the XP table to level 20, Hit Dice, and Ability Score Improvements at levels 4, 8, 12, 16 and 19.
 - Each turn has one **Action** (move, attack or cast) and one **Bonus Action** (potion, Second Wind or Hide), which does not end the turn.
 - **Fighter:** AC 19 (Defense fighting style), Second Wind, Extra Attack at levels 5, 11 and 20.
@@ -181,6 +183,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 ### 5.7 Deliberate simplifications of the rules
 - One square per turn. Every awake monster acts once per hero turn, with no initiative order.
 - No death saves.
+- Heroes start with 6 extra HP at level 1 (D-19), a house rule to soften the deadly early floors.
 - Spell slots are a single pool, not tracked by spell level. Leveled spells are always cast at your highest available slot level.
 - Areas are measured in squares (1 square = 5 ft); cones aim at your current target.
 - Ensnaring Strike is primed before the hit; Hunter's Mark moves to the next creature you hit for free when its target dies.
@@ -289,3 +292,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | R-24 and B-11 → Done: first Flatpak build installs, runs and plays on Jim's machine. |
 | 2026-11-23 | R-25 (free release on itch.io + GitHub Releases), D-17 (MIT code, CC-BY-4.0 art/sound/text), C-14, C-15, B-12 added; D-09 updated. `tools/build.sh release`, `LICENSE`, `LICENSES.md`; Credits shows licences and the Godot notice. |
 | 2026-11-23 | R-26 background music (D-18) added; R-08, R-17 and 5.8 updated for the Music settings and `M` key. |
+| 2026-11-23 | D-19: level-1 heroes get +6 HP (5.2, 5.7). |

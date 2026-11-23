@@ -10,6 +10,7 @@ extends RefCounted
 
 const MAX_FLOOR := 20
 const XP_MULT := 1.0          ## Tuning knob: raise to level faster.
+const START_HP_BONUS := 6     ## D-19: extra max HP at level 1 (house rule; early floors were too deadly).
 const LOG_SIZE := 6
 const LONG_REST_FLOORS := [5, 9, 13, 17, 20]   ## Arriving on these floors grants a Long Rest.
 const SAVE_PATH := "user://run.save"   ## R-09: single autosave slot
@@ -91,7 +92,7 @@ func _make_hero(cls: String, species: String) -> void:
 	var pools := _pool_maxes()
 	for k in pools:
 		hero[k] = pools[k]
-	var hp: int = c["hit_die"] + _mod("con") + (1 if species == "Dwarf" else 0)
+	var hp: int = c["hit_die"] + _mod("con") + (1 if species == "Dwarf" else 0) + START_HP_BONUS
 	hero["hp_max"] = hp
 	hero["hp"] = hp
 
