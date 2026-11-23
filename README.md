@@ -79,7 +79,8 @@ scripts/main.gd        title screen, sidebar, buttons, spell/pause/settings scre
 audio/*.wav            sound effects (generated)
 art/tiles.png          64x64 cartoon tileset atlas (generated); art/tiles_preview.png shows every tile, labelled
 scripts/tile_atlas.gd  tile name -> atlas index (generated with the atlas; don't edit by hand)
-testing.html           smoke-test checklist (open in any browser)
+art/tiles_index.js     same index for testing.html thumbnails (generated)
+testing.html           smoke-test checklist (open in Chrome from this folder; graphics steps show sprite thumbnails)
 tools/make_sounds.py   regenerates audio/  (python3 + numpy)
 tools/make_tiles.py    paints the whole tileset (python3 + Pillow): edit colours/shapes there, re-run, done
 tools/make_icons.py    regenerates art/icon_512.png (app-menu icon) from the hero sprite
