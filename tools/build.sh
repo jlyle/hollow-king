@@ -58,8 +58,17 @@ check() {
 	[ "$FAILED" = 0 ] && info "All set." || { info "Fix the items marked FIX, then run this again."; return 1; }
 }
 
-build() {
+## Keep Godot out of build output and Flatpak build trees (they contain links into /proc,
+## which makes the import scan loop forever).
+gdignore() {
 	mkdir -p builds
+	touch builds/.gdignore
+	[ -d .flatpak-builder ] && touch .flatpak-builder/.gdignore
+	return 0
+}
+
+build() {
+	gdignore
 	info "Importing assets"
 	$GODOT --headless --path . --import >/dev/null 2>&1 || true
 	info "Exporting Linux binary"
@@ -117,7 +126,7 @@ flatpak_build() {
 	cp art/icon_512.png builds/flatpak/src/
 
 	info "Building the Flatpak and installing it for $USER"
-	flatpak-builder --user --install --force-clean --disable-rofiles-fuse \
+	flatpak-builder --user --install --force-clean --disable-rofiles-fuse --state-dir=builds/flatpak/state \
 		--repo=builds/flatpak/repo builds/flatpak/build-dir "builds/flatpak/src/$APP_ID.yml"
 
 	info "Writing the single-file bundle"

@@ -4,3 +4,4 @@ export_credentials.cfg
 
 # Builds
 builds/
+.flatpak-builder/
