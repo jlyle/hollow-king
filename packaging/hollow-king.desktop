@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Depths of the Hollow King
+GenericName=Roguelike
+Comment=Turn-based 5E-compatible roguelike: twenty floors, one hero
+Exec=@BIN@
+Icon=hollow-king
+Terminal=false
+Categories=Game;RolePlaying;
+Keywords=roguelike;dungeon;rpg;5e;

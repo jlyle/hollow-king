@@ -1,17 +1,13 @@
 extends Control
 ## Draws the dungeon centred on the hero, as ASCII glyphs or as tiles (R-16), and turns taps into grid cells.
 
-signal cell_tapped(cell: Vector2i)
-signal swiped(dir: Vector2i)          ## R-20: swipe = one step in 8 directions
-signal long_pressed(cell: Vector2i)   ## R-20: long-press = inspect
+signal cell_tapped(cell: Vector2i)       ## left-click
+signal inspect_requested(cell: Vector2i) ## right-click (R-22)
+signal zoom_step(delta: int)             ## mouse wheel: +1 = zoom in, -1 = zoom out (R-22)
 
-const ZOOM_COLS := [19, 15, 11]       ## Settings map zoom: Small / Medium / Large
-const LONG_PRESS_MS := 450
+const ZOOM_COLS := [41, 31, 23]          ## Settings map zoom: Small / Medium / Large (squares across)
 
-var cols := 15                         ## Squares shown across the screen. Lower = bigger squares.
-var _pressing := false
-var _press_pos := Vector2.ZERO
-var _press_ms := 0
+var cols := 31                           ## Squares shown across the map. Lower = bigger squares.
 
 const ITEM_GLYPHS := {
 	"potion": ["!", "ff6b8a"],
@@ -203,29 +199,21 @@ func _cell_at(pos: Vector2) -> Vector2i:
 	return Vector2i(int(floorf(local.x / cell)), int(floorf(local.y / cell))) + origin
 
 
-## Tap, swipe or long-press. Decided when the finger lifts.
+## Left-click = move/attack/travel, right-click = inspect, wheel = zoom (R-22).
 func _gui_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
-	if mb == null or mb.button_index != MOUSE_BUTTON_LEFT:
+	if mb == null or not mb.pressed:
 		return
-	if mb.pressed:
-		_pressing = true
-		_press_pos = mb.position
-		_press_ms = Time.get_ticks_msec()
-		accept_event()
-		return
-	if not _pressing:
-		return
-	_pressing = false
+	match mb.button_index:
+		MOUSE_BUTTON_LEFT:
+			if mb.position.x >= offset.x and mb.position.y >= offset.y:
+				cell_tapped.emit(_cell_at(mb.position))
+		MOUSE_BUTTON_RIGHT:
+			inspect_requested.emit(_cell_at(mb.position))
+		MOUSE_BUTTON_WHEEL_UP:
+			zoom_step.emit(1)
+		MOUSE_BUTTON_WHEEL_DOWN:
+			zoom_step.emit(-1)
+		_:
+			return
 	accept_event()
-	var delta := mb.position - _press_pos
-	if delta.length() >= maxf(28.0, cell * 0.6):
-		# 8-way direction from the swipe angle (0 = right, screen y points down).
-		var octant := posmod(int(roundf(delta.angle() / (PI / 4.0))), 8)
-		var dirs := [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1),
-			Vector2i(-1, 0), Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1)]
-		swiped.emit(dirs[octant])
-	elif Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
-		long_pressed.emit(_cell_at(_press_pos))
-	elif _press_pos.x >= offset.x and _press_pos.y >= offset.y:
-		cell_tapped.emit(_cell_at(_press_pos))

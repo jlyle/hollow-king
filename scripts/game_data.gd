@@ -42,7 +42,7 @@ const CLASSES := {
 		"hit_die": 10, "primary": "dex", "attack_ability": "dex", "saves": ["str", "dex"],
 		"scores": {"str": 12, "dex": 17, "con": 14, "int": 10, "wis": 14, "cha": 8},
 		"weapon": "Shortsword", "dice": [1, 6], "caster": "wis", "slots": "half", "ranged": "longbow",
-		"desc": "Studded leather, shortsword and longbow (tap a far enemy to shoot). Hunter's Mark, Ensnaring Strike, Cure Wounds. Archery at 2, Extra Attack at 5.",
+		"desc": "Studded leather, shortsword and longbow (click a far enemy or press E to shoot). Hunter's Mark, Ensnaring Strike, Cure Wounds. Archery at 2, Extra Attack at 5.",
 	},
 	"Wizard": {
 		"tagline": "Fragile master of explosive spells.", "role": "Ranged · Caster",

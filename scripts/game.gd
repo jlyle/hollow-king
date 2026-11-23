@@ -52,7 +52,7 @@ var bonus_used := false
 var sneak_used := false
 var uncanny_used := false
 var death_cause := ""
-var events: Array = []           ## R-14/R-15: sound + haptic cues for the UI to play, drained each refresh
+var events: Array = []           ## R-14: sound cues for the UI to play, drained each refresh
 var _spot_i := 0
 
 
@@ -323,7 +323,7 @@ static func delete_save() -> void:
 
 # --- Queries used by the UI --------------------------------------------------------
 
-## Queue a presentation cue (sound/haptic). The UI drains `events` after each action.
+## Queue a sound cue (R-14). The UI drains `events` after each action.
 func fx(name: String) -> void:
 	if not events.has(name):
 		events.append(name)
@@ -491,7 +491,7 @@ func plan_explore() -> String:
 		if stairs_sealed():
 			return "Floor explored. Defeat the %s to unseal the stairs." % _guardian_name()
 		if start == stairs:
-			return "Floor explored. Tap Descend."
+			return "Floor explored. Press Enter to descend."
 		goal = stairs
 		plan_travel(goal)
 		return "Floor explored. Heading for the stairs."
@@ -601,7 +601,7 @@ func player_step(d: Vector2i) -> bool:
 			if stairs_sealed():
 				say("[color=#ff6b6b]A ward seals the stairs. Defeat the %s first.[/color]" % _guardian_name())
 			else:
-				say("Stairs lead down. Tap Descend (or tap yourself).")
+				say("Stairs lead down. Press Enter (or click yourself) to descend.")
 	_end_turn()
 	return true
 

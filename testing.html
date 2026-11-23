@@ -68,8 +68,6 @@
       <option value="all">All steps</option>
       <option value="open">Not yet tested</option>
       <option value="fail">Failures only</option>
-      <option value="desktop">Desktop steps</option>
-      <option value="android">Android steps</option>
     </select>
     <button id="copy">Copy results</button>
     <button id="reset">Reset all</button>
@@ -77,28 +75,28 @@
 </header>
 
 <main>
-  <p class="tip">Run on <b>desktop</b> first (Godot, F5), then on an <b>Android phone</b>. Mark each step Pass / Fail / Skip.
-    Results are saved in this browser. When done, tap <b>Copy results</b> and paste them to Claude. Failures with notes get fixed first.
+  <p class="tip">Run the game on your Linux desktop (<code>tools/build.sh run</code>). Mark each step Pass / Fail / Skip.
+    Results are saved in this browser. When done, click <b>Copy results</b> and paste them to Claude. Failures with notes get fixed first.
     Requirement IDs (R-xx) match <code>claude-requirements.md</code>.</p>
   <div id="list"></div>
 </main>
 
 <script>
-// Each step: [id, requirement, platform ("both" | "desktop" | "android"), step, expected]
+// Each step: [id, requirement, platform ("both"), step, expected]
 const SECTIONS = [
-  { title: "1. Launch & title screen", intro: "Open the project in Godot 4.5+ and press F5, or install the APK on a phone.", items: [
-    ["ST-01", "R-01", "both", "Launch the game.", "Title screen appears with no errors in Godot's Output panel. Portrait layout."],
+  { title: "1. Launch & title screen", intro: "Run tools/build.sh run (or press F5 in the Godot editor).", items: [
+    ["ST-01", "R-21", "both", "Launch the game.", "Title screen appears in a 1280×800 window with no errors in the terminal."],
     ["ST-02", "R-10", "both", "Look at the Class buttons.", "Six classes in a 3×2 grid: Fighter, Rogue, Barbarian, Ranger, Wizard, Cleric."],
-    ["ST-03", "R-04", "both", "Tap each class, then each species (Human, Dwarf, Halfling, Orc).", "Description text updates for each choice. Exactly one class and one species stay selected."],
-    ["ST-04", "C-04", "both", "Tap Credits at the bottom of the title screen.", "Credits screen shows the full SRD 5.2.1 CC-BY-4.0 attribution and \"5E compatible\". Title screen shows a one-line SRD note."],
+    ["ST-03", "R-04", "both", "Click each class, then each species (Human, Dwarf, Halfling, Orc).", "Description text updates for each choice. Exactly one class and one species stay selected."],
+    ["ST-04", "C-04", "both", "Click Credits at the bottom of the title screen.", "Credits screen shows the full SRD 5.2.1 CC-BY-4.0 attribution and \"5E compatible\". Title screen shows a one-line SRD note."],
     ["ST-05", "R-09", "both", "Check the start buttons with no saved run.", "Only a gold \"Begin Descent\" button shows; no Continue button."],
-    ["ST-57", "R-18", "both", "Look over the title screen; tap different classes and species.", "One centred column; selected chips have a gold border and gold text; the card updates its name, role line, tagline and species line; nothing feels cramped."],
-    ["ST-58", "R-18", "desktop", "Launch on desktop.", "Window opens phone-shaped (540×960); the title screen fits without scrolling."],
+    ["ST-57", "R-18", "both", "Look over the title screen; click different classes and species.", "One centred column; selected chips have a gold border and gold text; the card updates its name, role line, tagline and species line; nothing feels cramped."],
+    ["ST-58", "R-18", "both", "Resize the window, then press F11 twice.", "Title screen stays centred and fits; F11 toggles fullscreen and back."],
   ]},
   { title: "2. Controls & Settings screens", items: [
-    ["ST-06", "R-08", "both", "Tap Controls on the title screen.", "Controls screen lists Touch, Keyboard, Map Symbols, Class Buttons and Rules. It scrolls."],
-    ["ST-07", "R-08", "desktop", "Press ? or F1 to open; press Esc to close.", "Screen toggles open/closed with the keys."],
-    ["ST-08", "R-17", "both", "Tap Settings on the title screen.", "Three switches: Sound effects, Vibration (haptics), Tile graphics. Defaults: on, on, off."],
+    ["ST-06", "R-08", "both", "Click Controls on the title screen.", "Controls screen lists Keyboard, Mouse, Map Symbols, Class Buttons and Rules. It scrolls."],
+    ["ST-07", "R-08", "both", "Press ? or F1 to open; press Esc to close.", "Screen toggles open/closed with the keys."],
+    ["ST-08", "R-17", "both", "Click Settings on the title screen.", "Switches: Sound effects, Tile graphics, Fullscreen; plus a Map zoom button. Defaults: on, off, off, Medium."],
     ["ST-09", "R-14", "both", "Turn Sound off then on.", "A short chime plays when switched on."],
     ["ST-10", "R-17", "both", "Change a setting, quit the game completely, relaunch, open Settings.", "The changed setting was remembered."],
   ]},
@@ -109,30 +107,27 @@ const SECTIONS = [
     ["ST-14", "R-05", "both", "Descend through floors (this takes a while by hand).", "Floor themes change at 5 (Warrens), 9 (Flooded Caverns, water), 13 (Crypts, pillars), 17 (Infernal Forge, lava), 20 (Throne)."],
   ]},
   { title: "4. Movement & input", items: [
-    ["ST-15", "R-02", "both", "Tap each neighbouring square, including diagonals.", "Hero moves one square per tap; monsters act after each move."],
-    ["ST-16", "R-02", "both", "Tap a diagonal blocked by two wall corners.", "Hero does not squeeze through."],
-    ["ST-17", "R-02", "both", "Tap a distant explored floor square with no enemies in view.", "Hero auto-walks there and stops if an enemy comes into view."],
-    ["ST-18", "R-02", "both", "Tap yourself (not on stairs) / press Space.", "One turn passes (Wait)."],
-    ["ST-19", "R-08", "desktop", "Use arrows, WASD, HJKL, YUBN and numpad.", "All move the hero in the right directions."],
-    ["ST-20", "R-19", "android", "Press the phone's Back button during a run.", "Pause menu opens (game doesn't quit). Back again resumes."],
+    ["ST-15", "R-02", "both", "Left-click each neighbouring square, including diagonals.", "Hero moves one square per click; monsters act after each move."],
+    ["ST-16", "R-02", "both", "Click a diagonal blocked by two wall corners.", "Hero does not squeeze through."],
+    ["ST-17", "R-02", "both", "Left-click a distant explored floor square with no enemies in view.", "Hero auto-walks there and stops if an enemy comes into view."],
+    ["ST-18", "R-02", "both", "Click yourself (not on stairs) / press Space.", "One turn passes (Wait)."],
+    ["ST-19", "R-08", "both", "Use arrows, WASD, HJKL, YUBN and numpad.", "All move the hero in the right directions."],
   ]},
-  { title: "4b. Touch controls (phone)", intro: "Play these with the phone only - no keyboard or mouse.", items: [
-    ["ST-66", "R-20", "android", "Use the D-pad: tap each of the 8 arrows, then the centre.", "One step per tap in the right direction; centre = Wait; buttons are big enough to hit with a thumb."],
-    ["ST-67", "R-20", "android", "Hold a D-pad arrow down a long corridor.", "Hero keeps walking; stops when an enemy comes into view or you get hit."],
-    ["ST-68", "R-20", "android", "Swipe on the map in several directions (including diagonals).", "Hero steps one square in the swipe direction."],
-    ["ST-69", "R-20", "android", "Long-press a monster, an item and a wall.", "Log describes each (monster AC/health/conditions, item name, terrain)."],
-    ["ST-70", "R-20", "android", "Tap Explore on a fresh floor, repeatedly.", "Hero auto-walks to unexplored areas and items; stops when an enemy appears; when all explored, walks to the stairs."],
-    ["ST-71", "R-20", "android", "Settings: Map zoom Small / Medium / Large; D-pad off and on.", "Map squares resize; with D-pad off, action buttons use the full width. Choices remembered."],
-    ["ST-72", "R-20", "android", "Open Controls on the phone.", "Touch section first; no keyboard section."],
+  { title: "4b. Desktop controls", items: [
+    ["ST-73", "R-22", "both", "Right-click a monster, an item and a wall.", "Log describes each (monster AC/health/attacks, item name, terrain)."],
+    ["ST-74", "R-22", "both", "Scroll the mouse wheel over the map; press + and -.", "Map zooms between Small, Medium and Large; Settings shows the same zoom after a restart."],
+    ["ST-75", "R-22", "both", "Press X (or the Explore button) repeatedly on a fresh floor.", "Hero auto-walks to unexplored areas and items; stops when an enemy appears; when all explored, walks to the stairs."],
+    ["ST-76", "R-22", "both", "Look at the sidebar buttons.", "Each shows its key (Q, F, E, R, X, Enter, Space, ?, Esc); unused class buttons are hidden."],
+    ["ST-77", "R-19", "both", "During a run press Esc, then Esc again.", "Pause menu opens, then closes (Resume)."],
   ]},
   { title: "5. Combat & classes", intro: "Use the log at the top to confirm rolls. Start a separate run for each class.", items: [
     ["ST-21", "R-04", "both", "Walk into a monster (any class).", "Log shows hit/miss and damage; monster health bar appears when wounded; kills grant XP."],
-    ["ST-22", "R-04", "both", "Tap a distant visible monster.", "Yellow target frame appears around it."],
-    ["ST-23", "R-10", "both", "Fighter: tap 2nd Wind when hurt.", "HP rises; button count drops; usable once per turn (Bonus Action)."],
-    ["ST-24", "R-10", "both", "Rogue: tap Hide with no enemy adjacent, then attack.", "\"Hidden\" shows; next attack has Sneak Attack in the log."],
-    ["ST-25", "R-10", "both", "Barbarian: tap Rage, then get hit.", "\"RAGING\" in status; log says Rage halves the damage."],
+    ["ST-22", "R-04", "both", "Left-click a distant visible monster.", "Yellow target frame appears around it."],
+    ["ST-23", "R-10", "both", "Fighter: click 2nd Wind when hurt.", "HP rises; button count drops; usable once per turn (Bonus Action)."],
+    ["ST-24", "R-10", "both", "Rogue: click Hide with no enemy adjacent, then attack.", "\"Hidden\" shows; next attack has Sneak Attack in the log."],
+    ["ST-25", "R-10", "both", "Barbarian: click Rage, then get hit.", "\"RAGING\" in status; log says Rage halves the damage."],
     ["ST-26", "R-10", "both", "Barbarian level 2+: toggle Reckless.", "Status shows Reckless; button reads Reckless ON/off."],
-    ["ST-27", "R-10", "both", "Ranger: tap a distant enemy / Longbow button.", "Longbow attack in the log. Mark button applies Hunter's Mark (+Mark on hits)."],
+    ["ST-27", "R-10", "both", "Ranger: click a distant enemy / Ranged (E).", "Longbow attack in the log. Mark button applies Hunter's Mark (+Mark on hits)."],
     ["ST-28", "R-11", "both", "Wizard: Fire Bolt a distant enemy, then open Spells.", "Fire Bolt resolves; Spells menu lists all Wizard spells with costs and greyed-out reasons."],
     ["ST-29", "R-11", "both", "Wizard: cast Burning Hands on a group within 3 squares.", "Log shows each monster's save (saves/fails) and DC; half damage on saves."],
     ["ST-30", "R-11", "both", "Cleric: Sacred Flame an enemy; Healing Word when hurt.", "DEX save in the log; Healing Word heals and does not end your turn."],
@@ -156,33 +151,31 @@ const SECTIONS = [
     ["ST-44", "R-09", "both", "After dying, look at the title screen.", "No Continue button (save deleted: permadeath)."],
   ]},
   { title: "8. Save & resume, pause, quit", items: [
-    ["ST-59", "R-19", "both", "During a run, tap Menu (or press Esc).", "PAUSED screen with Resume, Controls, Settings, Save & return to title, Save & quit. Nothing moves while it is open."],
-    ["ST-60", "R-19", "both", "From the menu open Controls, close it; open Settings, close it; tap Resume.", "Each closes back to the menu; Resume returns to the same turn."],
+    ["ST-59", "R-19", "both", "During a run, click Menu (or press Esc).", "PAUSED screen with Resume, Controls, Settings, Save & return to title, Save & quit. Nothing moves while it is open."],
+    ["ST-60", "R-19", "both", "From the menu open Controls, close it; open Settings, close it; click Resume.", "Each closes back to the menu; Resume returns to the same turn."],
     ["ST-61", "R-19", "both", "Menu → Save & return to title.", "Title screen shows gold Continue; Continue restores the run."],
     ["ST-62", "R-19", "both", "Menu → Save & quit, then relaunch.", "Game closes; on relaunch Continue restores the run."],
-    ["ST-63", "R-19", "desktop", "On the title screen tap Quit (or press Esc with nothing open).", "Game closes."],
-    ["ST-45", "R-09", "desktop", "Mid-run, close the game window and relaunch.", "Continue shows Floor/Lv/Class; tapping it restores the same map, HP and log."],
-    ["ST-46", "R-09", "android", "Mid-run, swipe the app away from Recents, reopen.", "Continue restores the run."],
+    ["ST-63", "R-19", "both", "On the title screen click Quit (or press Esc with nothing open).", "Game closes."],
+    ["ST-45", "R-09", "both", "Mid-run, close the game window and relaunch.", "Continue shows Floor/Lv/Class; tapping it restores the same map, HP and log."],
     ["ST-47", "R-09", "both", "Take a risky swing, quit before seeing the result, resume and repeat the same action.", "Same outcome both times (no save-scumming)."],
     ["ST-48", "R-09", "both", "With a saved run, look at the start buttons.", "Gold \"Continue - Floor N, Lv N Class\" on top; plain \"New Run (replaces saved run)\" below."],
   ]},
-  { title: "9. Sound, haptics, tiles", items: [
+  { title: "9. Sound and tiles", items: [
     ["ST-49", "R-14", "both", "With sound on: move, attack, miss, get hit, kill, pick up gold, level up, descend.", "Each event has a distinct sound; nothing is ear-splitting; footsteps are quiet."],
     ["ST-50", "R-14", "both", "Turn Sound off and fight.", "Silence."],
-    ["ST-51", "R-15", "android", "With Vibration on: get hit, level up, die.", "Short buzz on hits, longer on level-up, long on death. (Needs Vibrate permission in the export.)"],
     ["ST-52", "R-16", "both", "Settings → Tile graphics on.", "Map switches to pixel tiles: tinted walls/floors, hero sprite, monster bodies with corner letters, red grate on sealed stairs."],
     ["ST-53", "R-16", "both", "In Tiles mode: target, wound, ensnare and turn monsters.", "Yellow frame, health bar, green tint (Restrained) and dimming (Turned) still show."],
   ]},
-  { title: "10. Android build", items: [
-    ["ST-54", "D-13", "android", "Run tools/android.sh check.", "Every line OK (Godot, Java 17, SDK packages incl. android-36, export templates)."],
-    ["ST-64", "D-13", "android", "Run tools/android.sh debug with the phone on USB.", "APK builds, installs and launches; the hero icon shows in the app drawer with the name Hollow King."],
-    ["ST-65", "C-01", "android", "Run tools/android.sh release (after creating the keystore).", "builds/hollow-king.aab is created; target SDK 36; no signing errors."],
-    ["ST-55", "R-01", "android", "Install and play 10 minutes on a real phone.", "No crashes; text readable; buttons easy to hit; no part of the UI under the notch/status bar."],
-    ["ST-56", "R-01", "android", "Rotate the phone.", "Game stays in portrait."],
+  { title: "10. Linux build & install", intro: "From the project folder in a terminal.", items: [
+    ["ST-78", "D-14", "both", "Run tools/build.sh check.", "Godot and the Linux export templates show OK."],
+    ["ST-79", "R-21", "both", "Run tools/build.sh build, then ./builds/hollow-king.x86_64.", "One binary is built and the game starts from it with no Godot editor needed."],
+    ["ST-80", "R-21", "both", "Run tools/build.sh install, then open your app menu.", "Depths of the Hollow King appears under Games with the hero icon and starts from there."],
+    ["ST-81", "R-09", "both", "Play a little in the installed game, quit, start it again from the menu.", "Continue restores the run (same save as the dev build)."],
+    ["ST-82", "R-21", "both", "Run tools/build.sh uninstall.", "Menu entry and binary are gone; it says where your saves are kept."],
   ]},
 ];
 
-const KEY = "hollowking-smoketest-v1";
+const KEY = "hollowking-smoketest-v2";
 let state = {};
 try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
@@ -208,8 +201,6 @@ function render() {
       const st = (state.items[id] || {}).s || "";
       if (f === "open") return !st;
       if (f === "fail") return st === "fail";
-      if (f === "desktop") return plat !== "android";
-      if (f === "android") return plat !== "desktop";
       return true;
     });
     if (!shown.length) continue;
@@ -232,7 +223,7 @@ function render() {
         <input type="text" class="note" placeholder="What happened? (note)" value="${esc(it.n || "")}">`;
       div.querySelectorAll(".states button").forEach(b => b.onclick = () => {
         const cur = state.items[id] || {};
-        cur.s = cur.s === b.dataset.s ? "" : b.dataset.s;   // tap again to clear
+        cur.s = cur.s === b.dataset.s ? "" : b.dataset.s;   // click again to clear
         state.items[id] = cur; save(); render();
       });
       div.querySelector(".note").oninput = e => {

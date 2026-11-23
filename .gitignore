@@ -1,12 +1,6 @@
 # Godot
 .godot/
-/android/
 export_credentials.cfg
 
-# Builds and signing keys - never commit keystores
-*.apk
-*.aab
-*.keystore
-*.jks
+# Builds
 builds/
-*.idsig

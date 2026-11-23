@@ -1,14 +1,34 @@
 # Depths of the Hollow King
 
-A turn-based ASCII roguelike for Android, built in **Godot 4.5+**. You control one hero through 20 procedurally generated floors, fighting your way down to the Hollow King. Rules are 5E compatible (2024 rules, SRD 5.2.1).
+A turn-based roguelike for **Linux**, built in **Godot 4.7+**. You control one hero through 20 procedurally generated floors, fighting your way down to the Hollow King. Rules are 5E compatible (2024 rules, SRD 5.2.1).
 
-## Run it
+The earlier Android/Google Play version is kept on the `android-final` branch.
 
-1. Install Godot 4.5 or newer (standard build, not .NET).
-2. Project Manager → **Import** → pick this folder's `project.godot`.
-3. Press **F5**. The window is phone-shaped (720×1280, portrait). The mouse works like a finger.
+## Build & install (Linux)
 
-Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, Enter descend, Q potion, F class ability, E ranged attack, R spells (or Reckless), X explore, ? or F1 opens the Controls screen, Esc opens the pause menu (on the title screen Esc quits).
+You need Godot 4.7+ (`godot --version`) and the **export templates for exactly that version**:
+```bash
+V=4.7.1   # match your godot --version
+cd /tmp && curl -LO https://github.com/godotengine/godot/releases/download/$V-stable/Godot_v$V-stable_export_templates.tpz
+unzip -q Godot_v$V-stable_export_templates.tpz
+mkdir -p ~/.local/share/godot/export_templates/$V.stable && mv templates/* ~/.local/share/godot/export_templates/$V.stable/
+```
+Then, from this folder:
+
+| Command | What it does |
+|---|---|
+| `tools/build.sh check` | Checks Godot and the export templates |
+| `tools/build.sh run` | Builds if anything changed, then runs the game |
+| `tools/build.sh build` | Builds one self-contained binary: `builds/hollow-king.x86_64` |
+| `tools/build.sh install` | Installs for your user: `~/.local/bin/hollow-king` + app-menu entry (Games) + icon |
+| `tools/build.sh uninstall` | Removes the binary, icon and menu entry (keeps saves) |
+
+For development you can also press **F5** in the Godot editor (`godot -e --path .`).
+Saves and settings live in `~/.local/share/godot/app_userdata/Depths of the Hollow King/`.
+
+## Controls
+- **Keyboard:** arrows / WASD / HJKL + YUBN / numpad move and attack · Space wait · Enter descend · Q potion · F class ability · E ranged · R spells (Reckless for Barbarian) · X explore · `+`/`-` zoom · F11 fullscreen · `?`/F1 controls · Esc pause menu (quits on the title screen).
+- **Mouse:** left-click to move, attack, select or auto-walk · right-click to inspect · wheel to zoom.
 
 ## What's in the starter
 
@@ -22,9 +42,9 @@ Desktop keys for testing: arrows / WASD / vi keys (HJKL YUBN) move, Space wait, 
 | **Enemies** | 16 SRD-style melee monsters (Giant Rat → Hill Giant), goblin and skeleton **archers**, 4 **spellcasters** (their save spells make *you* roll), **mini-bosses** on floors 5, 10, 15 that seal the stairs (`&`), and the Hollow King on 20. |
 | **Rests** | Taking the stairs is a Short Rest (spend Hit Dice). Arriving on floors 5, 9, 13, 17 and 20 gives a Long Rest. |
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
-| **Save / resume** | Autosaves after every action and when Android pauses or closes the app. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
-| **Sound, haptics, tiles** | 15 original sound effects, short vibrations on hits/level-ups/death, and an optional 16×16 pixel **tileset** instead of ASCII. Toggle all three in **Settings** (title screen or in-game); choices are remembered. |
-| **Phone UX** | On-screen **D-pad** (hold to keep walking), **swipe** the map to step, **long-press** to inspect, **Explore** button auto-walks to unexplored areas, map zoom (Small/Medium/Large). Tap to move/attack, tap far away to auto-walk. Portrait. In-game **Controls** screen (button, ?/F1, or Android Back) lists every tap, key and map symbol. |
+| **Save / resume** | Autosaves after every action and when the window loses focus or closes. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
+| **Sound, tiles, settings** | 15 original sound effects and an optional 16×16 pixel **tileset** instead of ASCII. **Settings** (title screen or pause menu): sound, tiles, map zoom, fullscreen; remembered between sessions. |
+| **Desktop UX** | Map on the left, sidebar with status, log and buttons (each labelled with its key) on the right. **Explore** auto-walks to unexplored areas. Resizable window, F11 fullscreen. In-game **Controls** screen (? / F1) lists every key, click and map symbol. |
 
 ### Class features implemented
 - **Fighter**: Defense style (AC 19), Second Wind (bonus action, 2/3/4 uses), Extra Attack at 5, 11, 20.
@@ -44,37 +64,33 @@ Human — Heroic Inspiration (auto-reroll a miss, once per Long Rest). Dwarf —
 - Movement is one square per turn rather than 30 ft of speed; every awake monster acts once per hero turn (no initiative order).
 - Hitting 0 HP is death — no death saves (permadeath is the genre).
 - Spell slots are tracked as one pool instead of by level.
-- Monster stat blocks are trimmed to attacks, AC, HP and one key trait. **Before publishing, check each name and number against SRD 5.2.1** — only use monsters that are in the SRD, or rename them.
+- Monster stat blocks are trimmed to attacks, AC, HP and one key trait. **Before sharing the game publicly, check each name and number against SRD 5.2.1** (B-08) — only use monsters that are in the SRD, or rename them.
 
 ## Files
 ```
-project.godot          engine settings (portrait, mobile renderer)
+project.godot          engine settings (landscape desktop window, GL Compatibility renderer)
 scenes/main.tscn       single scene; everything else is built in code
 scripts/game_data.gd   classes, species, monsters, XP table  ← tune balance here
 scripts/dungeon_gen.gd floor generator (layout style per floor band)
 scripts/game.gd        rules, turn loop, monster AI (no UI code)
-scripts/map_view.gd    ASCII renderer + tap input
-scripts/main.gd        title screen, HUD, buttons, spell menu, settings, sound + haptics
+scripts/map_view.gd    ASCII / tile renderer + mouse input
+scripts/main.gd        title screen, sidebar, buttons, spell/pause/settings screens, sound
 audio/*.wav            sound effects (generated)
 art/tiles.png          16x16 tileset atlas (generated); art/tiles_preview.png is a 6x preview
 testing.html           smoke-test checklist (open in any browser)
 tools/make_sounds.py   regenerates audio/  (python3 + numpy)
 tools/make_tiles.py    regenerates art/tiles.png (python3 + Pillow); edit the pixel grids to redraw tiles
-tools/make_icons.py    regenerates app icons from the hero sprite
-tools/android.sh       Android builds: check | debug | keystore | release (see ANDROID.md)
-export_presets.cfg     Android Debug (APK) and Android Release (AAB) presets
+tools/make_icons.py    regenerates art/icon_512.png (app-menu icon) from the hero sprite
+tools/build.sh         Linux build: check | build | run | install | uninstall
+packaging/             app-menu (.desktop) entry template
+export_presets.cfg     "Linux" export preset (x86_64, PCK embedded in the binary)
 ```
 To use a different tileset, replace `art/tiles.png` with any 16×16 atlas in the same layout (see the top of `tools/make_tiles.py`).
 Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` floor ranges in `game_data.gd`; monster count formula in `Game._spawn()`.
 
-## Publishing to Google Play
-Everything is in **[ANDROID.md](ANDROID.md)**: one-time Fedora setup (Java 17, Android SDK, templates), then
-`tools/android.sh debug` to play on your phone and `tools/android.sh release` for the Play upload.
-Export presets live in `export_presets.cfg`; icons are generated by `tools/make_icons.py`.
-
 ## Legal
-- Rules content is used under CC-BY-4.0 from SRD 5.2.1. The attribution statement is shown on the title screen; also put it in the store description.
-- Don't use "Dungeons & Dragons", "D&D", or Wizards' logos/settings in the name, icon or listing. "5E compatible" is allowed.
+- Rules content is used under CC-BY-4.0 from SRD 5.2.1. The full attribution is on the in-game **Credits** screen and below.
+- Don't use "Dungeons & Dragons", "D&D", or Wizards' logos/settings in the name, icon or any release page. "5E compatible" is allowed.
 - The Hollow King, all text, and the code are original.
 
 > This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
@@ -82,3 +98,4 @@ Export presets live in `export_presets.cfg`; icons are generated by `tools/make_
 ## Suggested next steps
 1. Inventory screen, shops between floors, scrolls/wands.
 2. Balance pass across all six classes.
+3. Flatpak or AppImage package for sharing with other Linux users (B-11).

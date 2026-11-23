@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Generate app icons from the hero sprite in art/tiles.png (C-11). Original art (D-09).
+"""Generate the app-menu icon from the hero sprite in art/tiles.png (D-09, D-14).
 
 Usage:  python3 tools/make_icons.py   (run make_tiles.py first)
-Writes: art/icon_192.png         Android launcher icon
-        art/icon_fg_432.png      Android adaptive icon foreground (hero, inside the safe zone)
-        art/icon_bg_432.png      Android adaptive icon background
-        art/icon_512.png         Google Play store listing icon
+Writes: art/icon_512.png   installed by tools/build.sh install as the desktop icon
 Needs:  Pillow
 """
 import os
@@ -56,15 +53,8 @@ def framed(size, sprite_px, border=True, rounded=0.0):
 
 
 def main():
-    framed(192, 144, border=True, rounded=0.18).save(os.path.join(ART, "icon_192.png"))
-    framed(512, 384, border=True).save(os.path.join(ART, "icon_512.png"))   # Play adds its own mask
-    background(432).save(os.path.join(ART, "icon_bg_432.png"))
-    # Adaptive foreground: transparent, hero within the central 66% safe zone.
-    fg = Image.new("RGBA", (432, 432), (0, 0, 0, 0))
-    hero = hero_sprite().resize((224, 224), Image.NEAREST)
-    fg.alpha_composite(hero, ((432 - 224) // 2, (432 - 224) // 2 + 8))
-    fg.save(os.path.join(ART, "icon_fg_432.png"))
-    print("Wrote icons to", os.path.abspath(ART))
+    framed(512, 384, border=True, rounded=0.18).save(os.path.join(ART, "icon_512.png"))
+    print("Wrote art/icon_512.png")
 
 
 if __name__ == "__main__":

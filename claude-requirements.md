@@ -1,10 +1,10 @@
 # Depths of the Hollow King: Requirements (Source of Truth)
 
-> **This file is the single source of truth for the game.** Code, README and store listing follow it.
+> **This file is the single source of truth for the game.** Code and README follow it.
 > When a requirement changes, update this file **first**, then the code, in the same commit.
 > If code and this file disagree, this file wins: fix the code, or fix the file on purpose.
 
-**Owner:** Jim (jlyle) · **Repo:** jlyle/hollow-king · **Last updated:** 2026-11-19
+**Owner:** Jim (jlyle) · **Repo:** jlyle/hollow-king · **Last updated:** 2026-11-23
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## 2. Vision
 
-A roguelike game for Google Play. Each new game spawns new, unexplored levels. The player controls a character that follows the recent D&D ruleset (5E, 2024 rules). There are 20 levels, each different and progressively harder, with enemies to vanquish along the way.
+A roguelike game for **Linux desktop** (D-14; originally planned for Google Play, see the `android-final` branch). Each new game spawns new, unexplored levels. The player controls a character that follows the recent D&D ruleset (5E, 2024 rules). There are 20 levels, each different and progressively harder, with enemies to vanquish along the way.
 
 ---
 
@@ -28,26 +28,28 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 
 | ID | Requirement | Status | Notes |
 |---|---|---|---|
-| R-01 | Publish on Google Play (Android) | In progress | Builds run in Godot; store release not started. See section 6. |
+| R-01 | Publish on Google Play (Android) | Dropped | Replaced by R-21 on 2026-11-23 (Linux only, D-14). Last Android version: branch `android-final`. |
 | R-02 | Roguelike: permadeath, turn-based, grid movement | Done | 0 HP = run over (no death saves). |
 | R-03 | A new game generates new, unexplored levels | Done | Fresh random seed per run; seed shown on end screen. Fog of war. |
 | R-04 | The character follows the recent D&D ruleset (5E 2024 / SRD 5.2.1) | Done (core) | Simplifications are listed in section 5. |
 | R-05 | 20 levels, each different | Done | 5 floor bands with distinct layout styles and palettes; floor 20 is the boss hall. |
 | R-06 | Difficulty rises level by level | Done | Monster pool shifts by floor; count grows with depth; final boss on floor 20. |
 | R-07 | Enemies to vanquish along the way | Done | 16 SRD-style monsters plus an original boss (Hollow King). |
-| R-08 | Player can see every control / keybind in-game | Done | Controls screen: button, `?` / F1, Android Back. |
-| R-09 | A run survives Android closing the app: it is saved automatically and can be resumed | Done | Autosave after every turn; **Continue** on the title screen. From B-01. |
+| R-08 | Player can see every control / keybind in-game | Done | Controls screen: button or `?` / F1. Lists keyboard and mouse controls. |
+| R-09 | A run survives the game being closed: it is saved automatically and can be resumed | Done | Autosave after every turn and on window close; **Continue** on the title screen. From B-01. |
 | R-10 | Six playable classes: Fighter, Rogue, Wizard, Cleric, Barbarian, Ranger | Done | Cleric, Barbarian, Ranger added from B-02. |
 | R-11 | Spells, including spells that force saving throws, with conditions and Concentration | Done | Spell menu; monster saves use per-ability save bonuses. From B-02. See 5.3. |
 | R-12 | Ranged and spellcasting monsters | Done | Archers shoot from range; casters force hero saving throws, heal allies, raise the dead. From B-04. See 5.4. |
 | R-13 | Floor-specific mini-bosses on floors 5, 10 and 15 | Done | Each guards and seals the stairs until defeated. From B-05. See 5.4. |
 | R-14 | Sound effects for key game events | Done | 15 original synthesized sounds. From B-06. See 5.8. |
-| R-15 | Haptic feedback on phones | Done | Short vibrations on damage, crits, level-up, death. From B-06. See 5.8. |
+| R-15 | Haptic feedback on phones | Dropped | Phone-only; removed with the Linux rebuild (D-14). |
 | R-16 | Optional tileset as an alternative to ASCII | Done | Original 16×16 pixel tileset; switch in Settings. From B-07. See 5.8. |
-| R-17 | Settings screen, remembered between sessions | Done | Sound, haptics, display mode (ASCII / Tiles). |
+| R-17 | Settings screen, remembered between sessions | Done | Sound, display mode (ASCII / Tiles), map zoom, fullscreen. |
 | R-18 | Clean, readable, attractive title screen | Done | Single centred column, clear selection state, class card with tagline, one primary button, legal text under Credits. See 5.9. |
-| R-19 | Pause menu and a way to quit | Done | In-game **Menu**: Resume, Controls, Settings, Save & return to title, Save & quit. Title screen has **Quit**. Esc / Android Back open the menu during a run. |
-| R-20 | Easy to play on a phone without a keyboard | Done | On-screen D-pad (hold to repeat), swipe to move, long-press to inspect, **Explore** auto-walk, map zoom setting, touch-first Controls screen. See 5.10. |
+| R-19 | Pause menu and a way to quit | Done | In-game **Menu**: Resume, Controls, Settings, Save & return to title, Save & quit. Title screen has **Quit**. Esc opens the menu during a run. |
+| R-20 | Easy to play on a phone without a keyboard | Dropped | Replaced by R-22 (desktop controls) on 2026-11-23. Was: On-screen D-pad (hold to repeat), swipe to move, long-press to inspect, **Explore** auto-walk, map zoom setting, touch-first Controls screen. |
+| R-21 | Runs as a native Linux desktop app | Done | x86_64 binary built with `tools/build.sh`; installs to your user account with an app-menu entry. See D-14, 5.10. |
+| R-22 | Comfortable desktop controls: keyboard first, mouse supported | Done | Full keyboard play, left-click move/attack/travel, right-click inspect, wheel zoom, **Explore**, F11 fullscreen. See 5.10. |
 
 ---
 
@@ -59,15 +61,16 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | D-02 | Combat style | Turn-based on a grid | 2026-11-18 |
 | D-03 | Party | Single hero | 2026-11-18 |
 | D-04 | Visual style | Minimal / ASCII | 2026-11-18 |
-| D-05 | Orientation | Portrait, phone-first, touch + keyboard | 2026-11-18 |
+| D-05 | Window and input | Landscape desktop window (resizable, F11 fullscreen), keyboard + mouse. Was: portrait, phone-first, touch | 2026-11-23 |
 | D-06 | Rules source | SRD 5.2.1 under CC-BY-4.0; market as "5E compatible", never "D&D" | 2026-11-18 |
 | D-07 | Repo | github.com/jlyle/hollow-king, branch `main` | 2026-11-18 |
 | D-08 | Source of truth | This file (`claude-requirements.md`) | 2026-11-19 |
 | D-09 | Audio and art assets | Original, generated by script (`tools/`), no third-party licences. Tileset can be swapped for any 16×16 atlas in the same layout | 2026-11-19 |
 | D-10 | Smoke testing | `testing.html`: interactive checklist (ST-xx steps mapped to R-/C- IDs). Add or update steps whenever a requirement changes | 2026-11-19 |
 | D-11 | Visual style | Dark background with a warm gold accent; rounded panels; uppercase spaced section labels; one gold primary button per screen. Palette in 5.9 | 2026-11-19 |
-| D-12 | Android package name | `com.jlyle.hollowking` (**permanent after the first Play upload** — confirm before uploading). Display name "Hollow King". Version name `0.1.0`, version code starts at 1 and **must increase with every upload** | 2026-11-19 |
-| D-13 | Android build setup | Two export presets in `export_presets.cfg`: **Android Debug (APK)** for sideloading to a phone, **Android Release (AAB)** for Play (Gradle build, target SDK 36, arm64 + armv7). Built from the command line with `tools/android.sh`; guide in `ANDROID.md` | 2026-11-19 |
+| D-12 | ~~Android package name~~ **Dropped 2026-11-23** (D-14) | `com.jlyle.hollowking` (**permanent after the first Play upload** — confirm before uploading). Display name "Hollow King". Version name `0.1.0`, version code starts at 1 and **must increase with every upload** | 2026-11-19 |
+| D-13 | ~~Android build setup~~ **Dropped 2026-11-23** (D-14) | Two export presets in `export_presets.cfg`: **Android Debug (APK)** for sideloading to a phone, **Android Release (AAB)** for Play (Gradle build, target SDK 36, arm64 + armv7). Built from the command line with `tools/android.sh`; guide in `ANDROID.md` | 2026-11-19 |
+| D-14 | Platform | **Linux only** (x86_64). Godot Linux export (`export_presets.cfg`, preset "Linux"), PCK embedded in one binary. `tools/build.sh check | build | run | install | uninstall`; install puts the binary in `~/.local/bin/hollow-king`, an app-menu entry in `~/.local/share/applications/` and the icon in `~/.local/share/icons/`. Android version preserved on branch `android-final` | 2026-11-23 |
 
 ---
 
@@ -162,7 +165,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 
 ### 5.6 Saving (R-09)
 - One save slot, stored in `user://run.save` on the device.
-- Autosaves after every action, and when the app is paused, loses focus or closes. The save is written to a temp file first, so a kill mid-write can't corrupt it.
+- Autosaves after every action, and when the window loses focus or is closed. The save is written to a temp file first, so a kill mid-write can't corrupt it.
 - The random number generator's state is saved too. Reloading replays the same rolls, so quitting can't be used to reroll a bad outcome (save-scumming).
 - The save is deleted when the run ends (death or victory). This keeps permadeath (R-02).
 - Title screen shows **Continue (Floor N, Lv N class)** when a save exists. Starting a new run replaces the saved run; the button says so.
@@ -177,46 +180,44 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 - Monster stat blocks are trimmed to AC, HP, attacks and one key trait. Spellcasting monsters and mini-bosses are original creatures with simplified spells, each on its own cooldown.
 
 
-### 5.8 Presentation: sound, haptics, tiles (R-14 to R-17)
-- **Settings** (title screen and in-game button), saved to `user://settings.cfg`: Sound on/off, Haptics on/off, Display ASCII / Tiles. Defaults: sound on, haptics on, ASCII.
+### 5.8 Presentation: sound, tiles, settings (R-14, R-16, R-17)
+- **Settings** (title screen and pause menu), saved to `~/.local/share/godot/app_userdata/Depths of the Hollow King/settings.cfg`: Sound on/off, Display ASCII / Tiles, Map zoom, Fullscreen. Defaults: sound on, ASCII, Medium, windowed.
 - **Sounds** (`audio/*.wav`, mono 22 kHz): step, hit, crit, miss, hurt, kill, spell, heal, pickup, level up, descend, death, victory, enemy spell, summon.
-- **Haptics:** hurt 40 ms, crit 30 ms, level up 80 ms, death 400 ms. Android export needs the **VIBRATE** permission (C-09).
 - **Tileset** (`art/tiles.png`, 16×16 cells, 8 columns): terrain, stairs, hero, items, and 6 monster body types tinted with each monster's colour. Each monster's letter is drawn in the corner so it can still be identified. Terrain is tinted with the floor theme colours.
 
 
 ### 5.9 Visual style (R-18, D-11)
 - **Palette:** background `#0b0b12` with a faint warm glow at the top; panels `#13131c`, borders `#2a2a3a`; text `#e9e6dc`, muted text `#8d8a99`; accent gold `#e8c170`.
 - **Title screen**, top to bottom: title, tagline, CLASS chips (3×2), SPECIES chips, class card (name, role line, one-line tagline, details, species line), primary button (**Begin Descent**, or **Continue** when a save exists, with New Run below it), small links (Controls · Settings · Credits), one-line SRD note.
-- **Selected chips** get a gold border and gold text. Content is a fixed-width centred column (620 px), so the layout looks the same on phones and on a wide desktop window.
-- **Desktop test window** opens at 540×960 (phone shape); Android is unaffected.
-- **Pause menu (R-19):** opened by the in-game **Menu** button, Esc or Android Back. Resume (gold primary), Controls, Settings, Save & return to title, Save & quit. Settings moves into this menu; the in-game controls are described in 5.10.
+- **Selected chips** get a gold border and gold text. Content is a fixed-width centred column (620 px) in the middle of the window.
+- **Window:** opens at 1280×800, resizable (minimum 1024×640); the UI is designed at 1600×1000 and scales with the window. F11 or Settings toggles fullscreen.
+- **Pause menu (R-19):** opened by the in-game **Menu** button or Esc. Resume (gold primary), Controls, Settings, Save & return to title, Save & quit. Settings moves into this menu; the in-game controls are described in 5.10.
 - **Quitting:** title screen links are Controls · Settings · Credits · Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
 
-### 5.10 Touch controls (R-20)
-- **Game screen layout:** status (3 lines), message log (4–5 lines), map, then the control area: **D-pad** on the left (3×3: 8 directions, **Wait** in the centre), action buttons on the right (Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Controls, Menu; buttons a class doesn't use are hidden).
-- **D-pad:** tap = one step or attack in that direction; **hold** = keep walking (stops when hurt or when a new enemy comes into view).
-- **Map gestures:** tap a neighbouring square to move/attack; tap a distant square to auto-walk; tap an enemy to select it (casters/Ranger also attack); **swipe** to step in one of 8 directions; **long-press** to inspect a square (monster stats, item, terrain).
+### 5.10 Desktop layout and controls (R-21, R-22)
+- **Game screen:** map on the left filling the window height; sidebar on the right (480 px) with status, message log (grows to fill), and action buttons in two columns: Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Wait, Controls, Menu. Buttons a class doesn't use are hidden.
+- **Keyboard (primary):** arrows / WASD / HJKL + YUBN / numpad move and attack; Space or `.` wait; Enter descend; Q potion; F ability; E ranged; R spells (Reckless for Barbarian); X explore; `+` / `-` zoom; F11 fullscreen; `?` / F1 controls; Esc pause menu (quit on the title screen).
+- **Mouse:** left-click a neighbouring square to move/attack; left-click a distant explored square to auto-walk; left-click an enemy to select it (casters/Ranger also attack); **right-click** to inspect any square; **mouse wheel** to zoom.
 - **Explore:** auto-walks to the nearest unexplored area or visible item; stops when an enemy appears or you're hurt. When nothing is left, it walks to the stairs.
-- **Map zoom** (Settings): Small 19 / Medium 15 / Large 11 squares across. Default Medium.
-- **Settings:** "On-screen D-pad" switch (default on). With it off, the action buttons use the full width.
-- **Controls screen on phones** shows touch controls first and hides the keyboard section.
+- **Map zoom** (Settings, wheel, +/-): Small 41 / Medium 31 / Large 23 squares across. Default Medium.
 ---
 
-## 6. Constraints (Google Play and legal)
+## 6. Constraints (platform and legal)
 
 | ID | Constraint |
 |---|---|
-| C-01 | New apps must target **Android 16 (API 36)** or higher. |
-| C-02 | Upload as an **AAB** (Gradle build enabled in the Godot export). |
-| C-03 | Personal Play developer account: a **closed test with ≥12 testers for 14 continuous days** before production access. |
-| C-04 | SRD 5.2.1 attribution statement must appear in-game (full text on the **Credits** screen, linked from the title screen, with a short SRD/CC-BY note on the title screen itself) and in the store description. |
+| C-01 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~New apps must target **Android 16 (API 36)** or higher.~~ |
+| C-02 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~Upload as an **AAB** (Gradle build enabled in the Godot export).~~ |
+| C-03 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~Personal Play developer account: a **closed test with ≥12 testers for 14 continuous days** before production access.~~ |
+| C-04 | SRD 5.2.1 attribution statement must appear in-game (full text on the **Credits** screen, linked from the title screen, with a short SRD/CC-BY note on the title screen itself) and in the README of any public release. |
 | C-05 | No "Dungeons & Dragons" / "D&D" names, logos or setting IP. "5E compatible" is allowed. |
 | C-06 | Monster names and stats must exist in SRD 5.2.1, or be original. Verify before release. |
-| C-07 | Store listing needs a 512×512 icon, 1024×500 feature graphic, screenshots, privacy policy URL, content rating and Data safety form. |
+| C-07 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~Store listing needs a 512×512 icon, 1024×500 feature graphic, screenshots, privacy policy URL, content rating and Data safety form.~~ |
 | C-08 | Never commit keystores or signing passwords. |
-| C-09 | Android export preset must enable the **VIBRATE** permission for haptics (R-15). |
-| C-10 | The upload keystore lives **outside the repo** (`~/.android-keys/`) with an offline backup; its password is never written to any file in the repo. Losing it means contacting Google to reset the upload key. |
-| C-11 | Launcher icons: 192×192 main + 432×432 adaptive foreground/background; Play listing icon 512×512. Generated by `tools/make_icons.py` from the hero sprite (D-09). |
+| C-09 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~Android export preset must enable the **VIBRATE** permission for haptics (R-15).~~ |
+| C-10 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~The upload keystore lives **outside the repo** (`~/.android-keys/`) with an offline backup; its password is never written to any file in the repo. Losing it means contacting Google to reset the upload key.~~ |
+| C-11 | **Dropped 2026-11-23 (Google Play / Android only, D-14).** ~~Launcher icons: 192×192 main + 432×432 adaptive foreground/background; Play listing icon 512×512. Generated by `tools/make_icons.py` from the hero sprite (D-09).~~ |
+| C-12 | Linux build needs Godot export templates that match the editor version exactly (e.g. 4.7.1.stable). Renderer stays GL Compatibility (OpenGL 3.3), so it runs on older and integrated GPUs. |
 
 ---
 
@@ -224,7 +225,7 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 
 | ID | Item | Status |
 |---|---|---|
-| B-01 | Save/resume a run when Android closes the app | Done (see R-09) |
+| B-01 | Save/resume a run when the game is closed | Done (see R-09) |
 | B-02 | More classes (Cleric, Barbarian, Ranger) and spells with saving throws | Done (see R-10, R-11) |
 | B-03 | Inventory screen; shops between floors; scrolls and wands | Proposed |
 | B-04 | Ranged and spellcasting monsters | Done (see R-12) |
@@ -232,8 +233,9 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | B-06 | Sound effects and haptics | Done (see R-14, R-15) |
 | B-07 | Optional tileset to replace ASCII | Done (see R-16) |
 | B-08 | Verify all monster stats against SRD 5.2.1 (C-06) | Planned |
-| B-09 | Android export preset: AAB, API 36, signing (C-01, C-02) | In progress: presets, icons, script and guide in repo; first build on Jim's machine pending |
+| B-09 | Android export preset: AAB, API 36, signing (C-01, C-02) | Dropped (Linux only, D-14). A debug APK was built and played on Jim's phone 2026-11-19. |
 | B-10 | Balance pass: playtest all 6 classes to floor 20; tune `XP_MULT` and monster counts | Proposed |
+| B-11 | Package as Flatpak or AppImage for easy sharing with other Linux users | Proposed |
 
 ---
 
@@ -255,3 +257,4 @@ A roguelike game for Google Play. Each new game spawns new, unexplored levels. T
 | 2026-11-19 | D-13: enabled ETC2/ASTC texture import in `project.godot` (required by Godot for Android export). |
 | 2026-11-19 | D-01: project marked for Godot 4.7 (`config/features`), matching Jim's editor so it stops rewriting `project.godot`. |
 | 2026-11-19 | R-20: touch-first controls (D-pad, swipe, long-press inspect, Explore, map zoom, phone Controls screen). |
+| 2026-11-23 | **Linux-only rebuild (D-14).** R-01, R-15, R-20, D-12, D-13, B-09 and Android/Play constraints C-01–C-03, C-07, C-09–C-11 dropped; R-21 (Linux desktop app), R-22 (desktop controls), C-12, B-11 added; D-05, R-08, R-09, R-17, R-19, C-04 updated. Android version kept on branch `android-final`. |

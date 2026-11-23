@@ -3,21 +3,11 @@ extends Control
 
 const MapView := preload("res://scripts/map_view.gd")
 
-## Required CC-BY-4.0 attribution for SRD 5.2.1 content. Keep this in-game and on the store listing.
+## Required CC-BY-4.0 attribution for SRD 5.2.1 content. Keep it in-game on the Credits screen (C-04).
 const ATTRIBUTION := "This work includes material from the System Reference Document 5.2.1 (\"SRD 5.2.1\") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode."
 
 ## Rows for the Controls screen: [left column, right column]. A row with "" on the right is a section heading.
 const CONTROLS := [
-	["TOUCH", ""],
-	["D-pad", "Tap an arrow to step or attack; hold to keep walking. Centre = Wait"],
-	["Swipe on the map", "Step one square in that direction"],
-	["Long-press the map", "Inspect a monster, item or square"],
-	["Explore button", "Auto-walk to unexplored areas and items; stops when enemies appear"],
-	["Tap a neighbouring square", "Move / attack (diagonals too)"],
-	["Tap a far explored square", "Auto-walk (stops when enemies appear)"],
-	["Tap yourself", "Wait, or descend when on >"],
-	["Tap a visible enemy", "Select it. Wizard/Cleric/Ranger also attack at range; others step toward it"],
-	["Buttons", "Wait, Potion, Ability, Fire Bolt, Descend"],
 	["KEYBOARD", ""],
 	["Arrows / WASD / HJKL", "Move or attack"],
 	["Y  U  B  N", "Move diagonally"],
@@ -27,12 +17,21 @@ const CONTROLS := [
 	["Q", "Drink potion (Bonus Action)"],
 	["F", "Class ability (see CLASS BUTTONS)"],
 	["E", "Ranged attack: Fire Bolt / Sacred Flame / Longbow"],
-	["X", "Explore"],
 	["R", "Spells menu (casters) / Reckless toggle (Barbarian)"],
+	["X", "Explore: auto-walk to unexplored areas and items"],
+	["+  /  -", "Zoom the map in / out"],
+	["F11", "Fullscreen on / off"],
 	["?  or  F1", "Open / close this screen"],
-	["Settings", "Sound, haptics, ASCII or Tiles, map zoom, D-pad (title screen or pause menu)"],
 	["Esc", "Close a screen. During a run: pause menu. On the title: quit"],
-	["Menu button / Back", "Pause menu: Resume, Controls, Settings, Save & return, Save & quit"],
+	["MOUSE", ""],
+	["Left-click next to you", "Move / attack (diagonals too)"],
+	["Left-click a far square", "Auto-walk there (stops when enemies appear)"],
+	["Left-click yourself", "Wait, or descend when on >"],
+	["Left-click an enemy", "Select it. Wizard/Cleric/Ranger also attack at range; others step toward it"],
+	["Right-click", "Inspect a monster, item or square"],
+	["Mouse wheel", "Zoom the map"],
+	["Sidebar buttons", "Potion, Ability, Ranged, Spells, Explore, Descend, Wait, Controls, Menu"],
+	["Settings", "Sound, ASCII or Tiles, map zoom, fullscreen (title screen or pause menu)"],
 	["MAP SYMBOLS", ""],
 	["@", "You (faded = hidden)"],
 	[">", "Stairs down (red = sealed by a mini-boss)"],
@@ -93,14 +92,12 @@ var controls_panel: Control
 var travel_timer: Timer
 var credits_panel: Control
 var pause_panel: Control
-# R-20 touch controls
-var dpad_box: Control
+# R-22 desktop controls
 var actions_grid: GridContainer
 var btn_explore: Button
-var dpad_timer: Timer
-var dpad_dir := Vector2i.ZERO
 var exploring := false
 var zoom_button: Button
+var settings_toggles := {}   ## setting key -> CheckButton, so F11 can update the Settings switch
 const ZOOM_NAMES := ["Small", "Medium", "Large"]
 var pause_info: Label
 var btn_menu: Button
@@ -111,12 +108,11 @@ var card_desc: Label
 var card_species: RichTextLabel
 var settings_panel: Control
 
-# --- Settings, sound and haptics (R-14 .. R-17) ---
+# --- Settings and sound (R-14, R-16, R-17) ---
 const SETTINGS_PATH := "user://settings.cfg"
 const SOUNDS := ["step", "hit", "crit", "miss", "hurt", "kill", "spell", "heal", "pickup",
 	"levelup", "descend", "death", "victory", "enemy_spell", "summon"]
-const HAPTICS := {"hurt": 40, "crit": 30, "levelup": 80, "death": 400}   ## milliseconds
-var settings := {"sound": true, "haptics": true, "tiles": false, "dpad": true, "zoom": 1}
+var settings := {"sound": true, "tiles": false, "zoom": 1, "fullscreen": false}
 var sounds := {}
 var sfx: Array = []
 var sfx_i := 0
@@ -139,8 +135,7 @@ func _ready() -> void:
 	_build_credits()
 	map_view.use_tiles = settings["tiles"]
 	_apply_layout()
-	# Let the Android back button close the Controls screen instead of quitting.
-	get_tree().quit_on_go_back = false
+	get_window().min_size = Vector2i(1024, 640)
 	travel_timer = Timer.new()
 	travel_timer.wait_time = 0.07
 	travel_timer.timeout.connect(_on_travel_tick)
@@ -220,7 +215,7 @@ func _build_title() -> void:
 	var sub := _label("Twenty floors. One hero. A new dungeon every run.", 18, c_muted)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(sub)
-	col.add_child(_spacer(34))
+	col.add_child(_spacer(24))
 
 	# Class chips
 	col.add_child(_section_label("CLASS"))
@@ -235,7 +230,7 @@ func _build_title() -> void:
 		var b := _choice_button(c, cg, c == chosen_class)
 		b.pressed.connect(_on_class_pick.bind(c))
 		cls_grid.add_child(b)
-	col.add_child(_spacer(22))
+	col.add_child(_spacer(16))
 
 	# Species chips
 	col.add_child(_section_label("SPECIES"))
@@ -248,12 +243,12 @@ func _build_title() -> void:
 		var b := _choice_button(sname, sg, sname == chosen_species)
 		b.pressed.connect(_on_species_pick.bind(sname))
 		sp_row.add_child(b)
-	col.add_child(_spacer(22))
+	col.add_child(_spacer(16))
 
 	# Class card
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", _box(c_panel, c_line, 1, 14, 22, 18))
-	card.custom_minimum_size = Vector2(0, 236)
+	card.custom_minimum_size = Vector2(0, 196)
 	col.add_child(card)
 	var cv := VBoxContainer.new()
 	cv.add_theme_constant_override("separation", 6)
@@ -281,17 +276,17 @@ func _build_title() -> void:
 	card_species.add_theme_font_size_override("normal_font_size", 16)
 	card_species.add_theme_color_override("default_color", c_text)
 	cv.add_child(card_species)
-	col.add_child(_spacer(26))
+	col.add_child(_spacer(18))
 
 	# Primary actions
 	btn_continue = Button.new()
-	btn_continue.custom_minimum_size = Vector2(0, 76)
+	btn_continue.custom_minimum_size = Vector2(0, 66)
 	btn_continue.add_theme_font_size_override("font_size", 24)
 	btn_continue.pressed.connect(_on_continue)
 	col.add_child(btn_continue)
 	col.add_child(_spacer(10))
 	btn_start = Button.new()
-	btn_start.custom_minimum_size = Vector2(0, 76)
+	btn_start.custom_minimum_size = Vector2(0, 66)
 	btn_start.add_theme_font_size_override("font_size", 26)
 	btn_start.pressed.connect(_on_start)
 	col.add_child(btn_start)
@@ -315,120 +310,61 @@ func _build_title() -> void:
 
 
 func _build_game() -> void:
-	game_screen = _full_margin(40)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	game_screen.add_child(v)
+	game_screen = _full_margin(20)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	game_screen.add_child(row)
 
-	status_label = _label("", 19, Color(0.93, 0.9, 0.82))
+	map_view = MapView.new()
+	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_view.cell_tapped.connect(_on_cell_tapped)
+	map_view.inspect_requested.connect(_on_inspect)
+	map_view.zoom_step.connect(_on_zoom_step)
+	row.add_child(map_view)
+
+	# Sidebar (R-22): status, message log, action buttons.
+	var side := PanelContainer.new()
+	side.custom_minimum_size = Vector2(480, 0)
+	side.add_theme_stylebox_override("panel", _box(c_panel, c_line, 1, 14, 18, 16))
+	row.add_child(side)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	side.add_child(v)
+
+	status_label = _label("", 20, Color(0.93, 0.9, 0.82))
 	v.add_child(status_label)
 
 	log_label = RichTextLabel.new()
 	log_label.bbcode_enabled = true
 	log_label.scroll_following = true
-	log_label.custom_minimum_size = Vector2(0, 136)
+	log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_label.add_theme_font_size_override("normal_font_size", 18)
 	v.add_child(log_label)
 
-	map_view = MapView.new()
-	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_view.cell_tapped.connect(_on_cell_tapped)
-	map_view.swiped.connect(_on_swipe)
-	map_view.long_pressed.connect(_on_long_press)
-	v.add_child(map_view)
-
-	# Control area: D-pad (left) + actions (right). R-20
-	var bottom := HBoxContainer.new()
-	bottom.add_theme_constant_override("separation", 12)
-	v.add_child(bottom)
-	dpad_box = _build_dpad()
-	bottom.add_child(dpad_box)
 	actions_grid = GridContainer.new()
 	actions_grid.columns = 2
-	actions_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions_grid.add_theme_constant_override("h_separation", 8)
 	actions_grid.add_theme_constant_override("v_separation", 8)
-	bottom.add_child(actions_grid)
-	btn_wait = _action_button(actions_grid, "Wait", _on_wait)
-	btn_potion = _action_button(actions_grid, "Potion", _on_potion)
-	btn_ability = _action_button(actions_grid, "Ability", _on_ability)
-	btn_ranged = _action_button(actions_grid, "Ranged", _on_ranged)
-	btn_spells = _action_button(actions_grid, "Spells", _on_spells)
-	btn_explore = _action_button(actions_grid, "Explore", _on_explore)
-	btn_descend = _action_button(actions_grid, "Descend >", _on_descend)
-	btn_help = _action_button(actions_grid, "Controls", _show_controls)
-	btn_menu = _action_button(actions_grid, "Menu", _show_pause)
-
-	dpad_timer = Timer.new()
-	dpad_timer.one_shot = true
-	dpad_timer.timeout.connect(_on_dpad_repeat)
-	add_child(dpad_timer)
+	v.add_child(actions_grid)
+	btn_potion = _action_button(actions_grid, "Potion  (Q)", _on_potion)
+	btn_ability = _action_button(actions_grid, "Ability  (F)", _on_ability)
+	btn_ranged = _action_button(actions_grid, "Ranged  (E)", _on_ranged)
+	btn_spells = _action_button(actions_grid, "Spells  (R)", _on_spells)
+	btn_explore = _action_button(actions_grid, "Explore  (X)", _on_explore)
+	btn_descend = _action_button(actions_grid, "Descend  (Enter)", _on_descend)
+	btn_wait = _action_button(actions_grid, "Wait  (Space)", _on_wait)
+	btn_help = _action_button(actions_grid, "Controls  (?)", _show_controls)
+	btn_menu = _action_button(actions_grid, "Menu  (Esc)", _show_pause)
 
 
-## 3x3 D-pad: 8 arrows, Wait in the centre. Hold an arrow to keep walking.
-func _build_dpad() -> GridContainer:
-	var g := GridContainer.new()
-	g.columns = 3
-	g.add_theme_constant_override("h_separation", 6)
-	g.add_theme_constant_override("v_separation", 6)
-	var dirs := [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
-		Vector2i(-1, 0), Vector2i.ZERO, Vector2i(1, 0),
-		Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]
-	for d in dirs:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(80, 80)
-		b.focus_mode = Control.FOCUS_NONE
-		if d == Vector2i.ZERO:
-			b.text = "Wait"
-			b.add_theme_font_size_override("font_size", 17)
-			b.pressed.connect(_on_wait)
-		else:
-			b.icon = _arrow_icon(d)
-			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			b.add_theme_color_override("icon_normal_color", c_text)
-			b.add_theme_color_override("icon_hover_color", Color.WHITE)
-			b.add_theme_color_override("icon_pressed_color", c_gold)
-			b.button_down.connect(_on_dpad_down.bind(d))
-			b.button_up.connect(_on_dpad_up)
-		g.add_child(b)
-	return g
-
-
-## Draws a white arrowhead pointing in direction d (no font glyphs needed).
-func _arrow_icon(d: Vector2i) -> ImageTexture:
-	var n := 40
-	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var ang := Vector2(d).angle()
-	var tip := Vector2(14, 0).rotated(ang)
-	var left := Vector2(-9, -12).rotated(ang)
-	var right := Vector2(-9, 12).rotated(ang)
-	var c := Vector2(n / 2.0, n / 2.0)
-	for y in n:
-		for x in n:
-			var p := Vector2(x + 0.5, y + 0.5) - c
-			if _in_triangle(p, tip, left, right):
-				img.set_pixel(x, y, Color.WHITE)
-	return ImageTexture.create_from_image(img)
-
-
-func _in_triangle(p: Vector2, a: Vector2, b: Vector2, c: Vector2) -> bool:
-	var d1 := (p - b).cross(a - b)
-	var d2 := (p - c).cross(b - c)
-	var d3 := (p - a).cross(c - a)
-	var has_neg := d1 < 0 or d2 < 0 or d3 < 0
-	var has_pos := d1 > 0 or d2 > 0 or d3 > 0
-	return not (has_neg and has_pos)
-
-
-## Show/hide the D-pad and resize the action grid to match (Settings). R-20
+## Applies zoom and fullscreen settings (R-17, R-22).
 func _apply_layout() -> void:
-	var dp: bool = settings["dpad"]
-	dpad_box.visible = dp
-	actions_grid.columns = 2 if dp else 4
-	btn_wait.visible = not dp
 	map_view.cols = MapView.ZOOM_COLS[clampi(int(settings["zoom"]), 0, 2)]
 	map_view.queue_redraw()
+	var want := DisplayServer.WINDOW_MODE_FULLSCREEN if settings["fullscreen"] else DisplayServer.WINDOW_MODE_WINDOWED
+	if DisplayServer.window_get_mode() != want:
+		DisplayServer.window_set_mode(want)
 
 
 func _build_overlay() -> void:
@@ -487,15 +423,9 @@ func _build_controls() -> void:
 	text.add_theme_constant_override("table_v_separation", 6)
 	text.add_theme_constant_override("table_h_separation", 18)
 	var bb := "[table=2]"
-	var phone := OS.has_feature("mobile")
-	var skipping := false
 	for row in CONTROLS:
 		var left: String = row[0]
 		var right: String = row[1]
-		if right == "":
-			skipping = phone and left == "KEYBOARD"   # R-20: phones show touch controls only
-		if skipping:
-			continue
 		if right == "":
 			bb += "[cell][b][color=#e8c170]\n%s[/color][/b][/cell][cell] [/cell]" % _esc(left)
 		else:
@@ -534,25 +464,10 @@ func _toggle_controls() -> void:
 
 
 func _notification(what: int) -> void:
-	# R-09: save whenever Android pauses, backgrounds or closes the app.
-	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST]:
+	# R-09: save when the window loses focus or is closed.
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST]:
 		if game and game_screen and game_screen.visible:
 			game.save_run()
-	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		if controls_panel and controls_panel.visible:
-			_hide_controls()
-		elif spells_panel and spells_panel.visible:
-			_hide_spells()
-		elif settings_panel and settings_panel.visible:
-			settings_panel.hide()
-		elif credits_panel and credits_panel.visible:
-			credits_panel.hide()
-		elif pause_panel and pause_panel.visible:
-			pause_panel.hide()  # Back again = Resume
-		elif game_screen and game_screen.visible and not (game and game.over):
-			_show_pause()  # R-19: Back opens the pause menu, not an accidental quit
-		else:
-			_quit_game()
 
 
 # --- Screens -----------------------------------------------------------------------
@@ -753,6 +668,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
+	if key.keycode == KEY_F11:
+		_toggle_fullscreen()
+		get_viewport().set_input_as_handled()
+		return
 	# Controls screen works from anywhere and pauses the game while open.
 	if key.keycode in [KEY_F1, KEY_SLASH, KEY_QUESTION]:
 		_toggle_controls()
@@ -830,6 +749,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		KEY_X:
 			_on_explore()
+			return
+		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
+			_on_zoom_step(1)
+			return
+		KEY_MINUS, KEY_KP_SUBTRACT:
+			_on_zoom_step(-1)
 			return
 		_:
 			return
@@ -952,7 +877,7 @@ func _on_descend() -> void:
 	_refresh()
 
 
-# --- Settings, sound and haptics (R-14 .. R-17) ---------------------------------------
+# --- Settings and sound (R-14, R-16, R-17) ---------------------------------------------
 
 func _load_settings() -> void:
 	var cf := ConfigFile.new()
@@ -989,13 +914,7 @@ func _play(sname: String) -> void:
 	pl.play()
 
 
-func _buzz(sname: String) -> void:
-	if not settings["haptics"] or not HAPTICS.has(sname) or not OS.has_feature("mobile"):
-		return
-	Input.vibrate_handheld(HAPTICS[sname])
-
-
-## Plays the sounds/haptics the last action produced (at most 3 sounds at once).
+## Plays the sounds the last action produced (at most 3 at once).
 func _play_events() -> void:
 	if game == null:
 		return
@@ -1012,7 +931,6 @@ func _play_events() -> void:
 		if played < 3:
 			_play(e)
 			played += 1
-		_buzz(e)
 
 
 func _build_settings() -> void:
@@ -1034,9 +952,8 @@ func _build_settings() -> void:
 	v.add_child(title)
 	var rows := [
 		["sound", "Sound effects"],
-		["haptics", "Vibration (haptics)"],
 		["tiles", "Tile graphics (off = ASCII)"],
-		["dpad", "On-screen D-pad"],
+		["fullscreen", "Fullscreen  (F11)"],
 	]
 	for row in rows:
 		var cb := CheckButton.new()
@@ -1045,6 +962,7 @@ func _build_settings() -> void:
 		cb.custom_minimum_size = Vector2(0, 84)
 		cb.add_theme_font_size_override("font_size", 26)
 		cb.toggled.connect(_on_setting.bind(String(row[0])))
+		settings_toggles[row[0]] = cb
 		v.add_child(cb)
 	zoom_button = Button.new()
 	zoom_button.custom_minimum_size = Vector2(0, 76)
@@ -1078,10 +996,7 @@ func _on_setting(pressed: bool, key: String) -> void:
 		"sound":
 			if pressed:
 				_play("pickup")
-		"haptics":
-			if pressed:
-				_buzz("crit")
-		"dpad":
+		"fullscreen":
 			_apply_layout()
 
 
@@ -1314,23 +1229,29 @@ func _quit_game() -> void:
 	get_tree().quit()
 
 
-# --- Touch controls (R-20) ----------------------------------------------------------------
+# --- Desktop controls (R-22) ---------------------------------------------------------------
 
-func _on_swipe(d: Vector2i) -> void:
-	if game == null or game.over:
-		return
-	_stop_travel()
-	var here: Vector2i = game.hero["pos"]
-	game.player_step_toward(here + d)
-	_refresh()
-
-
-func _on_long_press(c: Vector2i) -> void:
+## Right-click: inspect a square (R-22).
+func _on_inspect(c: Vector2i) -> void:
 	if game == null or game.over:
 		return
 	game.inspect(c)
-	_buzz("crit")  # small tick so the long-press feels acknowledged
 	_refresh()
+
+
+## Mouse wheel or +/-: change map zoom (R-22).
+func _on_zoom_step(delta: int) -> void:
+	settings["zoom"] = clampi(int(settings["zoom"]) + delta, 0, 2)
+	_save_settings()
+	_update_zoom_label()
+	_apply_layout()
+
+
+func _toggle_fullscreen() -> void:
+	settings["fullscreen"] = not settings["fullscreen"]
+	_save_settings()
+	_apply_layout()
+	_sync_settings_toggles()
 
 
 func _on_explore() -> void:
@@ -1346,39 +1267,6 @@ func _on_explore() -> void:
 	_refresh()
 
 
-func _on_dpad_down(d: Vector2i) -> void:
-	dpad_dir = d
-	if _dpad_step():
-		dpad_timer.start(0.3)   # first repeat after a short pause
-	else:
-		dpad_timer.stop()
-
-
-func _on_dpad_up() -> void:
-	dpad_timer.stop()
-	dpad_dir = Vector2i.ZERO
-
-
-func _on_dpad_repeat() -> void:
-	if dpad_dir == Vector2i.ZERO or not _dpad_step():
-		dpad_timer.stop()
-		return
-	dpad_timer.start(0.14)
-
-
-## One D-pad step. Returns false when holding should stop (blocked, hurt, or a new enemy in view).
-func _dpad_step() -> bool:
-	if game == null or game.over or dpad_dir == Vector2i.ZERO:
-		return false
-	_stop_travel()
-	var here: Vector2i = game.hero["pos"]
-	var hp_before: int = game.hero["hp"]
-	var seen_before := game.visible_count()
-	var acted := game.player_step_toward(here + dpad_dir)
-	_refresh()
-	return acted and not game.over and int(game.hero["hp"]) >= hp_before and game.visible_count() <= seen_before
-
-
 func _on_zoom_cycle() -> void:
 	settings["zoom"] = (int(settings["zoom"]) + 1) % ZOOM_NAMES.size()
 	_save_settings()
@@ -1388,3 +1276,9 @@ func _on_zoom_cycle() -> void:
 
 func _update_zoom_label() -> void:
 	zoom_button.text = "Map zoom: %s" % ZOOM_NAMES[clampi(int(settings["zoom"]), 0, 2)]
+
+
+func _sync_settings_toggles() -> void:
+	for k in settings_toggles:
+		var cb: CheckButton = settings_toggles[k]
+		cb.set_pressed_no_signal(bool(settings[k]))
