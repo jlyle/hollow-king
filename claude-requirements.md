@@ -35,7 +35,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | R-05 | 20 levels, each different | Done | 5 floor bands with distinct layout styles and palettes; floor 20 is the boss hall. |
 | R-06 | Difficulty rises level by level | Done | Monster pool shifts by floor; count grows with depth; final boss on floor 20. |
 | R-07 | Enemies to vanquish along the way | Done | 16 SRD-style monsters plus an original boss (Hollow King). |
-| R-08 | Player can see every control / keybind in-game | Done | Controls screen: button or `?` / F1. Lists keyboard and mouse controls. |
+| R-08 | Player can see every control / keybind in-game | Done | Controls screen: button or `?` / F1. Lists keyboard and mouse controls (incl. `M` music, R-26). |
 | R-09 | A run survives the game being closed: it is saved automatically and can be resumed | Done | Autosave after every turn and on window close; **Continue** on the title screen. From B-01. |
 | R-10 | Six playable classes: Fighter, Rogue, Wizard, Cleric, Barbarian, Ranger | Done | Cleric, Barbarian, Ranger added from B-02. |
 | R-11 | Spells, including spells that force saving throws, with conditions and Concentration | Done | Spell menu; monster saves use per-ability save bonuses. From B-02. See 5.3. |
@@ -44,7 +44,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | R-14 | Sound effects for key game events | Done | 15 original synthesized sounds. From B-06. See 5.8. |
 | R-15 | Haptic feedback on phones | Dropped | Phone-only; removed with the Linux rebuild (D-14). |
 | R-16 | Optional tileset as an alternative to ASCII | Done | Original 16×16 pixel tileset; switch in Settings. From B-07. See 5.8. |
-| R-17 | Settings screen, remembered between sessions | Done | Sound, display mode (ASCII / Tiles), map zoom, fullscreen. |
+| R-17 | Settings screen, remembered between sessions | Done | Sound, music on/off and volume (R-26), display mode (ASCII / Tiles), map zoom, fullscreen. |
 | R-18 | Clean, readable, attractive title screen | Done | Single centred column, clear selection state, class card with tagline, one primary button, a row of secondary buttons (Controls, Settings, Credits, Quit), legal text under Credits. See 5.9. |
 | R-19 | Pause menu and a way to quit | Done | In-game **Menu**: Resume, Controls, Settings, Save & return to title, Save & quit. Title screen has **Quit**. Esc opens the menu during a run. |
 | R-20 | Easy to play on a phone without a keyboard | Dropped | Replaced by R-22 (desktop controls) on 2026-11-23. Was: On-screen D-pad (hold to repeat), swipe to move, long-press to inspect, **Explore** auto-walk, map zoom setting, touch-first Controls screen. |
@@ -53,6 +53,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | R-23 | Graphics in a warm, chunky, hand-painted cartoon style, similar in feel to Spelunky 2 | Done | Original art only (D-15): textured rock walls with front faces, per-area textures, a sprite per class and per monster, torchlight around the hero, drop shadows, idle bob. Tiles are now the default display; ASCII stays available. See 5.8. |
 | R-24 | Installable on any x86_64 Linux distro that has Flatpak, with its dependencies installed automatically | Done: built and played on Jim's Fedora machine 2026-11-23 | Single file `hollow-king.flatpak`; installing it pulls the Freedesktop runtime from Flathub (D-16). From B-11. |
 | R-25 | Free public release: downloadable at no cost from itch.io and GitHub Releases | In progress: licences and `tools/build.sh release` in repo; first upload pending | Two downloads per version: `hollow-king-<ver>-linux-x86_64.tar.gz` (plain binary) and `hollow-king-<ver>.flatpak`, plus `SHA256SUMS` (D-17). |
+| R-26 | Background music in a cheesy, 90s General-MIDI style | Built; awaiting Jim's playtest | Asked for by Jim 2026-11-23. A looping track for the title screen, one per area, and a boss track. Music on/off and volume in Settings; `M` toggles it. See 5.8, D-18. |
 
 ---
 
@@ -77,6 +78,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | D-15 | Art style | Cartoon style *inspired by* Spelunky 2 (bold dark outlines, earthy palette, shaded rounded shapes, big-headed characters), drawn from scratch by `tools/make_tiles.py`. **No Spelunky characters, sprites or other assets are copied or traced** (C-05 spirit). 64×64 atlas cells, smooth (linear) scaling | 2026-11-23 |
 | D-16 | Flatpak packaging | App ID `io.github.jlyle.HollowKing` (**permanent once shared** — changing it later makes it a different app). Runtime `org.freedesktop.Platform` **25.08** (supported to Aug 2027; move to the next August release before then). Bundles the exported Godot binary; permissions: X11 + GPU + audio only (no network, no file access). Bundle built with `--runtime-repo` = Flathub so installs fetch the runtime. Files in `packaging/flatpak/` | 2026-11-23 |
 | D-17 | Open-source licences | Code: **MIT** (`LICENSE`). Original art, sound and text: **CC-BY-4.0**. Rules text: SRD 5.2.1 under CC-BY-4.0 (C-04). Godot Engine: MIT, notice shown on Credits (C-14). Summary in `LICENSES.md`; metainfo `project_license` = `MIT AND CC-BY-4.0`. Chosen by Jim 2026-11-23 | 2026-11-23 |
+| D-18 | How music is made | Original, composed and synthesized by `tools/make_music.py` (numpy + ffmpeg) with GM-style instruments (brass, strings, harpsichord, organ, flute, square lead, slap-ish bass, drum kit, orchestra hit). Saved as looping mono OGG (`audio/music_*.ogg`), so no MIDI player is needed in Godot. Same licence as other assets (D-17). | 2026-11-23 |
 
 ---
 
@@ -187,8 +189,13 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 
 
 ### 5.8 Presentation: sound, tiles, settings (R-14, R-16, R-17)
-- **Settings** (title screen and pause menu), saved to `~/.local/share/godot/app_userdata/Depths of the Hollow King/settings.cfg`: Sound on/off, Display ASCII / Tiles, Map zoom, Fullscreen. Defaults: sound on, Tiles, Medium, windowed.
+- **Settings** (title screen and pause menu), saved to `~/.local/share/godot/app_userdata/Depths of the Hollow King/settings.cfg`: Sound on/off, Music on/off, Music volume (Quiet / Normal / Loud), Display ASCII / Tiles, Map zoom, Fullscreen. Defaults: sound on, music on at Normal, Tiles, Medium, windowed.
 - **Sounds** (`audio/*.wav`, mono 22 kHz): step, hit, crit, miss, hurt, kill, spell, heal, pickup, level up, descend, death, victory, enemy spell, summon.
+- **Music (R-26, D-18)** `audio/music_*.ogg`, cheesy GM-synth loops (40-70 s each), crossfaded over 1.5 s:
+  - **title** on the title screen;
+  - per area: **cellars** (harpsichord minuet), **warrens** (bouncy goblin polka), **caverns** (echoing flute), **crypts** (spooky organ), **forge** (driving rock);
+  - **boss**: floor 20 throughout, and on floors 5/10/15 once the mini-boss has been seen, until it dies;
+  - fades out when the run ends so the death/victory sound plays alone.
 - **Tileset (R-23, D-15)** `art/tiles.png`, 64×64 cells, index in `scripts/tile_atlas.gd`:
   - Per area (cellars, warrens, caverns, crypts, forge, throne): wall **top**, wall **face** (drawn when floor is below the wall, for depth), two floor variants (picked per square so floors don't look tiled).
   - Water, lava, stairs (trapdoor with ladder), sealed stairs (chained grate).
@@ -281,3 +288,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | B-11 → R-24: Flatpak packaging (D-16, C-13); game version 0.2.0 set in `project.godot`. |
 | 2026-11-23 | R-24 and B-11 → Done: first Flatpak build installs, runs and plays on Jim's machine. |
 | 2026-11-23 | R-25 (free release on itch.io + GitHub Releases), D-17 (MIT code, CC-BY-4.0 art/sound/text), C-14, C-15, B-12 added; D-09 updated. `tools/build.sh release`, `LICENSE`, `LICENSES.md`; Credits shows licences and the Godot notice. |
+| 2026-11-23 | R-26 background music (D-18) added; R-08, R-17 and 5.8 updated for the Music settings and `M` key. |

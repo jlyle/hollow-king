@@ -36,7 +36,7 @@ For development you can also press **F5** in the Godot editor (`godot -e --path 
 Saves and settings live in `~/.local/share/godot/app_userdata/Depths of the Hollow King/`.
 
 ## Controls
-- **Keyboard:** arrows / WASD / HJKL + YUBN / numpad move and attack · Space wait · Enter descend · Q potion · F class ability · E ranged · R spells (Reckless for Barbarian) · X explore · `+`/`-` zoom · F11 fullscreen · `?`/F1 controls · Esc pause menu (quits on the title screen).
+- **Keyboard:** arrows / WASD / HJKL + YUBN / numpad move and attack · Space wait · Enter descend · Q potion · F class ability · E ranged · R spells (Reckless for Barbarian) · X explore · `+`/`-` zoom · M music on/off · F11 fullscreen · `?`/F1 controls · Esc pause menu (quits on the title screen).
 - **Mouse:** left-click to move, attack, select or auto-walk · right-click to inspect · wheel to zoom.
 
 ## What's in the starter
@@ -53,7 +53,7 @@ Saves and settings live in `~/.local/share/godot/app_userdata/Depths of the Holl
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
 | **Save / resume** | Autosaves after every action and when the window loses focus or closes. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
 | **Graphics** | Warm, chunky cartoon art in the spirit of Spelunky 2, all original: textured rock walls with front faces, a look per area, a sprite for every class and monster, shadows, torchlight and a gentle idle bob. ASCII mode is still one switch away. |
-| **Sound, settings** | 15 original sound effects. **Settings** (title screen or pause menu): sound, tiles, map zoom, fullscreen; remembered between sessions. |
+| **Sound, music, settings** | 15 original sound effects; cheesy 90s-MIDI-style background music (title, one track per area, boss), crossfaded; `M` toggles music. **Settings** (title screen or pause menu): sound, music, music volume, tiles, map zoom, fullscreen; remembered between sessions. |
 | **Desktop UX** | Map across the top; under it a strip with status, message log and buttons (each labelled with its key). **Explore** auto-walks to unexplored areas. Resizable window, F11 fullscreen. In-game **Controls** screen (? / F1) lists every key, click and map symbol. |
 
 ### Class features implemented
@@ -89,7 +89,8 @@ audio/*.wav            sound effects (generated)
 art/tiles.png          64x64 cartoon tileset atlas (generated); art/tiles_preview.png shows every tile, labelled
 scripts/tile_atlas.gd  tile name -> atlas index (generated with the atlas; don't edit by hand)
 testing.html           smoke-test checklist (open in Chrome from this folder; graphics steps show sprite thumbnails)
-tools/make_sounds.py   regenerates audio/  (python3 + numpy)
+tools/make_sounds.py   regenerates audio/*.wav  (python3 + numpy)
+tools/make_music.py    regenerates audio/music_*.ogg  (python3 + numpy + ffmpeg)
 tools/make_tiles.py    paints the whole tileset (python3 + Pillow): edit colours/shapes there, re-run, done
 tools/make_icons.py    regenerates art/icon_512.png (app-menu icon) from the hero sprite
 tools/build.sh         Linux build: check | build | run | install | uninstall | flatpak | flatpak-run | release

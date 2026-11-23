@@ -22,6 +22,7 @@ const CONTROLS := [
 	["R", "Spells menu (casters) / Reckless toggle (Barbarian)"],
 	["X", "Explore: auto-walk to unexplored areas and items"],
 	["+  /  -", "Zoom the map in / out"],
+	["M", "Music on / off (volume in Settings)"],
 	["F11", "Fullscreen on / off"],
 	["?  or  F1", "Open / close this screen"],
 	["Esc", "Close a screen. During a run: pause menu. On the title: quit"],
@@ -114,10 +115,25 @@ var settings_panel: Control
 const SETTINGS_PATH := "user://settings.cfg"
 const SOUNDS := ["step", "hit", "crit", "miss", "hurt", "kill", "spell", "heal", "pickup",
 	"levelup", "descend", "death", "victory", "enemy_spell", "summon"]
-var settings := {"sound": true, "tiles": true, "zoom": 1, "fullscreen": false}   ## R-23: tiles by default
+var settings := {"sound": true, "music": true, "music_vol": 1, "tiles": true, "zoom": 1, "fullscreen": false}   ## R-23: tiles by default; R-26 music
 var sounds := {}
 var sfx: Array = []
 var sfx_i := 0
+# --- Music (R-26, D-18) ---
+const MUSIC_TRACKS := ["title", "cellars", "warrens", "caverns", "crypts", "forge", "boss"]
+const AREA_MUSIC := {"Sunken Cellars": "cellars", "Goblin Warrens": "warrens", "Flooded Caverns": "caverns",
+		"Bone Crypts": "crypts", "Infernal Forge": "forge", "Throne of the Hollow King": "boss"}
+const MUSIC_VOL_NAMES := ["Quiet", "Normal", "Loud"]
+const MUSIC_VOL_DB := [-22.0, -14.0, -8.0]
+const MUSIC_FADE := 1.5
+var music := {}               ## track name -> AudioStreamOggVorbis
+var music_players: Array = [] ## two players, crossfaded
+var music_active := 0
+var music_now := ""
+var music_boss_seen := -1     ## floor on which the mini-boss was spotted (boss music until it dies)
+var music_vol_button: Button
+var _music_fading := false
+var _music_tweens: Array = [null, null]
 var btn_start: Button
 var btn_continue: Button
 
@@ -488,6 +504,7 @@ func _show_title() -> void:
 	title_screen.show()
 	game_screen.hide()
 	overlay.hide()
+	_update_music()
 	_update_desc()
 	var saved := Game.read_save()
 	btn_continue.visible = not saved.is_empty()
@@ -540,6 +557,7 @@ func _on_continue() -> void:
 
 
 func _enter_game() -> void:
+	music_boss_seen = -1
 	map_view.game = game
 	title_screen.hide()
 	game_screen.show()
@@ -552,6 +570,7 @@ func _refresh() -> void:
 		return
 	game.save_run()  # R-09: autosave after every action (deletes the save once the run is over)
 	_play_events()
+	_update_music()
 	var hd: Dictionary = game.hero
 	var nxt := game.xp_next()
 	status_label.text = "Floor %d/%d - %s\n%s %s  Lv %d  HP %d/%d  AC %d\nXP %d/%s  Gold %d\n%s" % [
@@ -681,6 +700,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if key.keycode == KEY_F11:
 		_toggle_fullscreen()
+		get_viewport().set_input_as_handled()
+		return
+	if key.keycode == KEY_M:
+		_toggle_music()
 		get_viewport().set_input_as_handled()
 		return
 	# Controls screen works from anywhere and pauses the game while open.
@@ -913,6 +936,96 @@ func _build_audio() -> void:
 		var pl := AudioStreamPlayer.new()
 		add_child(pl)
 		sfx.append(pl)
+	for tname in MUSIC_TRACKS:
+		var mpath := "res://audio/music_%s.ogg" % tname
+		if ResourceLoader.exists(mpath):
+			var st = load(mpath)
+			if st is AudioStreamOggVorbis:
+				(st as AudioStreamOggVorbis).loop = true
+			music[tname] = st
+	for _i in 2:
+		var mp := AudioStreamPlayer.new()
+		mp.volume_db = -80.0
+		add_child(mp)
+		music_players.append(mp)
+
+
+## R-26: which track should be playing right now ("" = silence).
+func _wanted_music() -> String:
+	if not settings["music"]:
+		return ""
+	if title_screen != null and title_screen.visible:
+		return "title"
+	if game == null or not game_screen.visible:
+		return music_now
+	if game.over:
+		return ""
+	var track: String = AREA_MUSIC.get(String(game.floor_theme.get("name", "")), "cellars")
+	if game.stairs_sealed():
+		for m in game.monsters:
+			if m["hp"] > 0 and m.get("mini", false) and game.visible_monster_at(m["pos"]) != null:
+				music_boss_seen = game.floor_num
+		if music_boss_seen == game.floor_num:
+			track = "boss"
+	return track
+
+
+## Crossfade to the wanted track if it changed.
+func _update_music() -> void:
+	if music_players.is_empty():
+		return
+	var want := _wanted_music()
+	var vol: float = MUSIC_VOL_DB[clampi(int(settings["music_vol"]), 0, 2)]
+	if want == music_now:
+		var cur: AudioStreamPlayer = music_players[music_active]
+		if cur.playing and not _music_fading:
+			cur.volume_db = vol
+		return
+	music_now = want
+	var old: AudioStreamPlayer = music_players[music_active]
+	if old.playing:
+		_music_tween(music_active).tween_property(old, "volume_db", -60.0, MUSIC_FADE)
+		_music_tweens[music_active].tween_callback(old.stop)
+	if want == "" or not music.has(want):
+		return
+	music_active = 1 - music_active
+	var nxt: AudioStreamPlayer = music_players[music_active]
+	nxt.stream = music[want]
+	nxt.volume_db = -50.0
+	nxt.play()
+	var tw := _music_tween(music_active)
+	_music_fading = true
+	tw.tween_property(nxt, "volume_db", vol, MUSIC_FADE)
+	tw.tween_callback(func(): _music_fading = false)
+
+
+## A fresh tween for player i, cancelling any fade still running on it.
+func _music_tween(i: int) -> Tween:
+	var old_tw: Tween = _music_tweens[i]
+	if old_tw != null and old_tw.is_valid():
+		old_tw.kill()
+		_music_fading = false
+	var tw := create_tween()
+	_music_tweens[i] = tw
+	return tw
+
+
+func _toggle_music() -> void:
+	settings["music"] = not settings["music"]
+	_save_settings()
+	_sync_settings_toggles()
+	_update_music()
+
+
+func _on_music_vol_cycle() -> void:
+	settings["music_vol"] = (int(settings["music_vol"]) + 1) % MUSIC_VOL_NAMES.size()
+	_save_settings()
+	_update_music_vol_label()
+	_update_music()
+
+
+func _update_music_vol_label() -> void:
+	music_vol_button.text = "Music volume: %s" % MUSIC_VOL_NAMES[clampi(int(settings["music_vol"]), 0, 2)]
 
 
 func _play(sname: String) -> void:
@@ -963,6 +1076,7 @@ func _build_settings() -> void:
 	v.add_child(title)
 	var rows := [
 		["sound", "Sound effects"],
+		["music", "Music  (M)"],
 		["tiles", "Tile graphics (off = ASCII)"],
 		["fullscreen", "Fullscreen  (F11)"],
 	]
@@ -975,13 +1089,19 @@ func _build_settings() -> void:
 		cb.toggled.connect(_on_setting.bind(String(row[0])))
 		settings_toggles[row[0]] = cb
 		v.add_child(cb)
+	music_vol_button = Button.new()
+	music_vol_button.custom_minimum_size = Vector2(0, 76)
+	music_vol_button.add_theme_font_size_override("font_size", 24)
+	music_vol_button.pressed.connect(_on_music_vol_cycle)
+	v.add_child(music_vol_button)
+	_update_music_vol_label()
 	zoom_button = Button.new()
 	zoom_button.custom_minimum_size = Vector2(0, 76)
 	zoom_button.add_theme_font_size_override("font_size", 24)
 	zoom_button.pressed.connect(_on_zoom_cycle)
 	v.add_child(zoom_button)
 	_update_zoom_label()
-	var note := _label("Sounds and tiles are original, generated by the scripts in tools/.", 17, Color(0.55, 0.55, 0.6))
+	var note := _label("Sounds, music and tiles are original, generated by the scripts in tools/.", 17, Color(0.55, 0.55, 0.6))
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(note)
 	var close := Button.new()
@@ -1007,6 +1127,8 @@ func _on_setting(pressed: bool, key: String) -> void:
 		"sound":
 			if pressed:
 				_play("pickup")
+		"music":
+			_update_music()
 		"fullscreen":
 			_apply_layout()
 
@@ -1161,7 +1283,7 @@ func _build_credits() -> void:
 	v.add_child(_spacer(8))
 	for pair in [
 		["GAME", "Depths of the Hollow King. Design: Jim (jlyle). Built with Godot Engine."],
-		["ART & SOUND", "Original tiles and sound effects, generated by the scripts in tools/."],
+		["ART & SOUND", "Original tiles, sound effects and cheesy synth music, generated by the scripts in tools/."],
 		["LICENCE", "Free and open source (D-17). Code: MIT. Art, sound and text: CC-BY-4.0, by Jim Lyle. Source: github.com/jlyle/hollow-king"],
 		["RULES", "5E compatible. " + ATTRIBUTION],
 		["ENGINE", GODOT_NOTICE],
