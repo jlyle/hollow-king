@@ -202,7 +202,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 - **Quitting:** title screen links are Controls · Settings · Credits · Quit; Esc on the title screen (with nothing open) also quits. The run is always saved before leaving.
 
 ### 5.10 Desktop layout and controls (R-21, R-22)
-- **Game screen:** map on the left filling the window height; sidebar on the right (480 px) with status, message log (grows to fill), and action buttons in two columns: Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Wait, Controls, Menu. Buttons a class doesn't use are hidden.
+- **Game screen:** map across the full width at the top; a **control strip under the map** (about 210 px) with three parts side by side: status on the left, the message log in the middle (fills the space), and the action buttons on the right in a 3×3 grid (Potion, Ability, Ranged, Spells/Reckless, Explore, Descend, Wait, Controls, Menu). Buttons a class doesn't use are hidden. Changed 2026-11-23 at Jim's request (was: sidebar on the right).
 - **Keyboard (primary):** arrows / WASD / HJKL + YUBN / numpad move and attack; Space or `.` wait; Enter descend; Q potion; F ability; E ranged; R spells (Reckless for Barbarian); X explore; `+` / `-` zoom; F11 fullscreen; `?` / F1 controls; Esc pause menu (quit on the title screen).
 - **Mouse:** left-click a neighbouring square to move/attack; left-click a distant explored square to auto-walk; left-click an enemy to select it (casters/Ranger also attack); **right-click** to inspect any square; **mouse wheel** to zoom.
 - **Explore:** auto-walks to the nearest unexplored area or visible item; stops when an enemy appears or you're hurt. When nothing is left, it walks to the stairs.
@@ -268,3 +268,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | R-23, D-15: Spelunky 2-inspired cartoon art (original), 64 px atlas with per-area walls/floors, class and monster sprites, torchlight; Tiles default; D-09 updated. |
 | 2026-11-23 | D-10: `testing.html` rewritten for the Linux build (85 steps, sections A–N) with a full graphics section (D–G) showing sprite thumbnails; `tools/make_tiles.py` now also writes `art/tiles_index.js`. |
 | 2026-11-23 | D-10: tile index built into `testing.html` (no separate `art/tiles_index.js`); clearer warning when `art/tiles.png` can't be found. |
+| 2026-11-23 | R-22: controls moved from a right-hand sidebar to a strip under the map (status · log · 3×3 buttons). |

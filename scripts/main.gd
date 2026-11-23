@@ -30,7 +30,7 @@ const CONTROLS := [
 	["Left-click an enemy", "Select it. Wizard/Cleric/Ranger also attack at range; others step toward it"],
 	["Right-click", "Inspect a monster, item or square"],
 	["Mouse wheel", "Zoom the map"],
-	["Sidebar buttons", "Potion, Ability, Ranged, Spells, Explore, Descend, Wait, Controls, Menu"],
+	["Buttons under the map", "Potion, Ability, Ranged, Spells, Explore, Descend, Wait, Controls, Menu"],
 	["Settings", "Sound, ASCII or Tiles, map zoom, fullscreen (title screen or pause menu)"],
 	["MAP SYMBOLS", ""],
 	["@", "You (faded = hidden)"],
@@ -311,9 +311,9 @@ func _build_title() -> void:
 
 func _build_game() -> void:
 	game_screen = _full_margin(20)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
-	game_screen.add_child(row)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	game_screen.add_child(col)
 
 	map_view = MapView.new()
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -321,29 +321,36 @@ func _build_game() -> void:
 	map_view.cell_tapped.connect(_on_cell_tapped)
 	map_view.inspect_requested.connect(_on_inspect)
 	map_view.zoom_step.connect(_on_zoom_step)
-	row.add_child(map_view)
+	col.add_child(map_view)
 
-	# Sidebar (R-22): status, message log, action buttons.
-	var side := PanelContainer.new()
-	side.custom_minimum_size = Vector2(480, 0)
-	side.add_theme_stylebox_override("panel", _box(c_panel, c_line, 1, 14, 18, 16))
-	row.add_child(side)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	side.add_child(v)
+	# Control strip under the map (R-22): status | message log | action buttons.
+	var strip := PanelContainer.new()
+	strip.custom_minimum_size = Vector2(0, 210)
+	strip.add_theme_stylebox_override("panel", _box(c_panel, c_line, 1, 14, 18, 14))
+	col.add_child(strip)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 18)
+	strip.add_child(h)
 
-	status_label = _label("", 20, Color(0.93, 0.9, 0.82))
-	v.add_child(status_label)
+	status_label = _label("", 19, Color(0.93, 0.9, 0.82))
+	status_label.custom_minimum_size = Vector2(330, 0)
+	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(status_label)
+	h.add_child(_vrule())
 
 	log_label = RichTextLabel.new()
 	log_label.bbcode_enabled = true
 	log_label.scroll_following = true
-	log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	log_label.add_theme_font_size_override("normal_font_size", 18)
-	v.add_child(log_label)
+	h.add_child(log_label)
+	h.add_child(_vrule())
 
 	actions_grid = GridContainer.new()
-	actions_grid.columns = 2
+	actions_grid.columns = 3
+	actions_grid.custom_minimum_size = Vector2(600, 0)
+	actions_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(actions_grid)
 	actions_grid.add_theme_constant_override("h_separation", 8)
 	actions_grid.add_theme_constant_override("v_separation", 8)
 	v.add_child(actions_grid)
@@ -356,6 +363,14 @@ func _build_game() -> void:
 	btn_wait = _action_button(actions_grid, "Wait  (Space)", _on_wait)
 	btn_help = _action_button(actions_grid, "Controls  (?)", _show_controls)
 	btn_menu = _action_button(actions_grid, "Menu  (Esc)", _show_pause)
+
+
+## Thin vertical divider for the control strip.
+func _vrule() -> ColorRect:
+	var r := ColorRect.new()
+	r.color = c_line
+	r.custom_minimum_size = Vector2(1, 0)
+	return r
 
 
 ## Applies zoom and fullscreen settings (R-17, R-22).

@@ -45,7 +45,7 @@ Saves and settings live in `~/.local/share/godot/app_userdata/Depths of the Holl
 | **Save / resume** | Autosaves after every action and when the window loses focus or closes. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
 | **Graphics** | Warm, chunky cartoon art in the spirit of Spelunky 2, all original: textured rock walls with front faces, a look per area, a sprite for every class and monster, shadows, torchlight and a gentle idle bob. ASCII mode is still one switch away. |
 | **Sound, settings** | 15 original sound effects. **Settings** (title screen or pause menu): sound, tiles, map zoom, fullscreen; remembered between sessions. |
-| **Desktop UX** | Map on the left, sidebar with status, log and buttons (each labelled with its key) on the right. **Explore** auto-walks to unexplored areas. Resizable window, F11 fullscreen. In-game **Controls** screen (? / F1) lists every key, click and map symbol. |
+| **Desktop UX** | Map across the top; under it a strip with status, message log and buttons (each labelled with its key). **Explore** auto-walks to unexplored areas. Resizable window, F11 fullscreen. In-game **Controls** screen (? / F1) lists every key, click and map symbol. |
 
 ### Class features implemented
 - **Fighter**: Defense style (AC 19), Second Wind (bonus action, 2/3/4 uses), Extra Attack at 5, 11, 20.
@@ -75,7 +75,7 @@ scripts/game_data.gd   classes, species, monsters, XP table  ← tune balance he
 scripts/dungeon_gen.gd floor generator (layout style per floor band)
 scripts/game.gd        rules, turn loop, monster AI (no UI code)
 scripts/map_view.gd    ASCII / tile renderer + mouse input
-scripts/main.gd        title screen, sidebar, buttons, spell/pause/settings screens, sound
+scripts/main.gd        title screen, control strip, buttons, spell/pause/settings screens, sound
 audio/*.wav            sound effects (generated)
 art/tiles.png          64x64 cartoon tileset atlas (generated); art/tiles_preview.png shows every tile, labelled
 scripts/tile_atlas.gd  tile name -> atlas index (generated with the atlas; don't edit by hand)

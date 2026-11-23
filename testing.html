@@ -124,7 +124,7 @@ const SECTIONS = [
     ["B-08", "R-19", "On the title screen click <b>Quit</b> (and another time press <kbd>Esc</kbd> with nothing open).", "Game closes."],
   ]},
   { key: "C", title: "C. Dungeon, movement and input", items: [
-    ["C-01", "R-03", "Click <b>Begin Descent</b>.", "Floor 1 \"Sunken Cellars\" loads; map on the left, sidebar on the right showing floor, class, level, HP, AC, XP, gold."],
+    ["C-01", "R-03", "Click <b>Begin Descent</b>.", "Floor 1 \"Sunken Cellars\" loads; map across the top; under it a strip with status (floor, class, level, HP, AC, XP, gold), the message log and the buttons."],
     ["C-02", "R-03", "Start another run with the same class.", "The floor 1 layout is different."],
     ["C-03", "R-22", "Move with arrows, WASD, HJKL, YUBN and the numpad (8 directions).", "Each key moves one square the right way; monsters act after each move."],
     ["C-04", "R-02", "Try to step diagonally between two wall corners.", "The hero doesn't squeeze through."],
@@ -132,7 +132,7 @@ const SECTIONS = [
     ["C-06", "R-22", "Right-click a monster, an item, a wall and the stairs.", "The log describes each one (monster AC, health and attacks; item name; terrain; stairs)."],
     ["C-07", "R-22", "Press <kbd>X</kbd> (or click Explore) repeatedly on a fresh floor.", "Auto-walks to unexplored areas and items; stops when an enemy appears; once everything is explored, walks to the stairs."],
     ["C-08", "R-22", "Scroll the mouse wheel over the map; press <kbd>+</kbd> and <kbd>-</kbd>.", "Zoom steps between Small, Medium and Large; Settings shows the same zoom after a restart."],
-    ["C-09", "R-22", "Look at the sidebar buttons for each class you try.", "Each shows its key (Q, F, E, R, X, Enter, Space, ?, Esc); buttons the class can't use are hidden."],
+    ["C-09", "R-22", "Look at the buttons under the map for each class you try.", "Each shows its key (Q, F, E, R, X, Enter, Space, ?, Esc); buttons the class can't use are hidden."],
   ]},
   { key: "D", title: "D. Graphics – overall look", graphics: true,
     intro: "Tile graphics must be ON (Settings). Compare what you see with the thumbnails; they are the real game art.", items: [
@@ -178,7 +178,7 @@ const SECTIONS = [
     ["G-05", "R-13", "Mini-bosses on floors 5, 10 and 15.", "Goblin Warchief (horned helm, axe), Drowned Oracle (teal hood, water staff), Bone Warden (big armoured skeleton, red eyes).", ["m_warchief", "m_oracle", "m_bone_warden"]],
     ["G-06", "R-07", "Floor 20.", "The Hollow King: crowned skeleton in a purple cloak with a glowing staff.", ["m_hollow_king"]],
   ]},
-  { key: "H", title: "H. Combat and classes", intro: "Use the log in the sidebar to confirm rolls. One run per class.", items: [
+  { key: "H", title: "H. Combat and classes", intro: "Use the message log under the map to confirm rolls. One run per class.", items: [
     ["H-01", "R-04", "Walk into a monster.", "Log shows hit/miss and damage; kills give XP."],
     ["H-02", "R-10", "Fighter: press <kbd>F</kbd> (Second Wind) when hurt.", "HP goes up; the count on the button drops; it doesn't use up your move (Bonus Action)."],
     ["H-03", "R-10", "Rogue: Hide (<kbd>F</kbd>) with no enemy adjacent, then attack.", "\"HIDDEN\" in the status; the next attack adds Sneak Attack."],
