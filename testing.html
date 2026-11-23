@@ -96,7 +96,7 @@ const SECTIONS = [
   { title: "2. Controls & Settings screens", items: [
     ["ST-06", "R-08", "both", "Click Controls on the title screen.", "Controls screen lists Keyboard, Mouse, Map Symbols, Class Buttons and Rules. It scrolls."],
     ["ST-07", "R-08", "both", "Press ? or F1 to open; press Esc to close.", "Screen toggles open/closed with the keys."],
-    ["ST-08", "R-17", "both", "Click Settings on the title screen.", "Switches: Sound effects, Tile graphics, Fullscreen; plus a Map zoom button. Defaults: on, off, off, Medium."],
+    ["ST-08", "R-17", "both", "Click Settings on the title screen.", "Switches: Sound effects, Tile graphics, Fullscreen; plus a Map zoom button. Defaults: on, on, off, Medium."],
     ["ST-09", "R-14", "both", "Turn Sound off then on.", "A short chime plays when switched on."],
     ["ST-10", "R-17", "both", "Change a setting, quit the game completely, relaunch, open Settings.", "The changed setting was remembered."],
   ]},
@@ -163,8 +163,11 @@ const SECTIONS = [
   { title: "9. Sound and tiles", items: [
     ["ST-49", "R-14", "both", "With sound on: move, attack, miss, get hit, kill, pick up gold, level up, descend.", "Each event has a distinct sound; nothing is ear-splitting; footsteps are quiet."],
     ["ST-50", "R-14", "both", "Turn Sound off and fight.", "Silence."],
-    ["ST-52", "R-16", "both", "Settings → Tile graphics on.", "Map switches to pixel tiles: tinted walls/floors, hero sprite, monster bodies with corner letters, red grate on sealed stairs."],
-    ["ST-53", "R-16", "both", "In Tiles mode: target, wound, ensnare and turn monsters.", "Yellow frame, health bar, green tint (Restrained) and dimming (Turned) still show."],
+    ["ST-52", "R-23", "both", "Start a run with Tile graphics on (the default).", "Cartoon art: textured rock walls with front faces, your class's own hero sprite, a sprite per monster, soft shadows, warm torchlight fading into darkness."],
+    ["ST-53", "R-16", "both", "In Tiles mode: target, wound, ensnare and turn monsters.", "Yellow frame, health bar, green tint (Restrained) and greyed-out sprite (Turned) all show."],
+    ["ST-83", "R-23", "both", "Descend through the areas (cellars 1-4, warrens 5-8, caverns 9-12, crypts 13-16, forge 17-19, throne 20).", "Each area has its own wall and floor look; walls don't show an obvious repeating pattern."],
+    ["ST-84", "R-23", "both", "Watch the map for a few seconds without moving.", "Figures and items bob gently; no flicker or slowdown."],
+    ["ST-85", "R-16", "both", "Settings: turn Tile graphics off, then on.", "Switches cleanly between ASCII and the cartoon tiles."],
   ]},
   { title: "10. Linux build & install", intro: "From the project folder in a terminal.", items: [
     ["ST-78", "D-14", "both", "Run tools/build.sh check.", "Godot and the Linux export templates show OK."],

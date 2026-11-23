@@ -1,5 +1,6 @@
 extends Control
-## Draws the dungeon centred on the hero, as ASCII glyphs or as tiles (R-16), and turns taps into grid cells.
+## Draws the dungeon centred on the hero, as ASCII glyphs or as cartoon tiles (R-16, R-23),
+## and turns mouse input into grid cells.
 
 signal cell_tapped(cell: Vector2i)       ## left-click
 signal inspect_requested(cell: Vector2i) ## right-click (R-22)
@@ -17,23 +18,14 @@ const ITEM_GLYPHS := {
 	"armor": ["[", "7fe0ff"],
 }
 
-## Atlas indexes in art/tiles.png (8 columns of 16x16). Keep in sync with tools/make_tiles.py.
-const TILE_SIZE := 16
-const ATLAS_COLS := 8
-const TILE := {
-	"floor": 0, "wall": 1, "water": 2, "lava": 3, "stairs": 4, "sealed": 5, "hero": 6, "potion": 7,
-	"greater": 8, "gold": 9, "weapon": 10, "armor": 11,
-	"beast": 12, "humanoid": 13, "undead": 14, "large": 15, "caster": 16, "boss": 17,
+## Floor theme name -> tile set prefix in TileAtlas (tools/make_tiles.py).
+const THEME_TILES := {
+	"Sunken Cellars": "cellars", "Goblin Warrens": "warrens", "Flooded Caverns": "caverns",
+	"Bone Crypts": "crypts", "Infernal Forge": "forge", "Throne of the Hollow King": "throne",
 }
-## Monster key -> body sprite. Anything not listed uses "humanoid".
-const BODY := {
-	"rat": "beast", "wolf": "beast", "spider": "beast",
-	"skeleton": "undead", "zombie": "undead", "ghoul": "undead", "wight": "undead", "wraith": "undead",
-	"skeleton_archer": "undead", "bone_warden": "undead",
-	"ogre": "large", "minotaur": "large", "troll": "large", "giant": "large", "bugbear": "large",
-	"kobold_shaman": "caster", "cult_acolyte": "caster", "dark_adept": "caster", "necromancer": "caster", "oracle": "caster",
-	"hollow_king": "boss",
-}
+const LIGHT_INNER := 2.5        ## squares of full torchlight around the hero
+const DARK_REMEMBERED := Color(0.03, 0.03, 0.08, 0.62)
+const DARK_EDGE := Color(0.02, 0.015, 0.04)
 
 var game: Game
 var use_tiles := false   ## Set from Settings (R-17)
@@ -42,22 +34,47 @@ var origin := Vector2i.ZERO
 var offset := Vector2.ZERO
 var font: Font
 var atlas: Texture2D
+var glow_tex: GradientTexture2D   ## warm torch glow around the hero
+var _anim_accum := 0.0
 
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # crisp pixels
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR  # smooth painted art (D-15)
 	if ResourceLoader.exists("res://art/tiles.png"):
 		atlas = load("res://art/tiles.png")
+	var g := Gradient.new()
+	g.set_color(0, Color(1.0, 0.72, 0.38, 0.22))
+	g.set_color(1, Color(1.0, 0.6, 0.3, 0.0))
+	glow_tex = GradientTexture2D.new()
+	glow_tex.gradient = g
+	glow_tex.fill = GradientTexture2D.FILL_RADIAL
+	glow_tex.fill_from = Vector2(0.5, 0.5)
+	glow_tex.fill_to = Vector2(1.0, 0.5)
+	glow_tex.width = 128
+	glow_tex.height = 128
 	resized.connect(queue_redraw)
 
 
-func _tile(name: String, pos: Vector2, mod: Color) -> void:
-	var idx: int = TILE[name]
-	var src := Rect2((idx % ATLAS_COLS) * TILE_SIZE, (idx / ATLAS_COLS) * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-	draw_texture_rect_region(atlas, Rect2(pos, Vector2(cell, cell)), src, mod)
+## Gentle idle bob in tile mode: redraw ~20 times a second.
+func _process(delta: float) -> void:
+	if not (use_tiles and is_visible_in_tree() and game != null):
+		return
+	_anim_accum += delta
+	if _anim_accum >= 0.05:
+		_anim_accum = 0.0
+		queue_redraw()
+
+
+func _tile(tname: String, pos: Vector2, mod: Color = Color.WHITE, scale: float = 1.0) -> void:
+	if not TileAtlas.INDEX.has(tname):
+		return
+	var idx: int = TileAtlas.INDEX[tname]
+	var src := Rect2((idx % TileAtlas.COLS) * TileAtlas.CELL, (idx / TileAtlas.COLS) * TileAtlas.CELL, TileAtlas.CELL, TileAtlas.CELL)
+	var sz := cell * scale
+	draw_texture_rect_region(atlas, Rect2(pos + Vector2((cell - sz) / 2.0, cell - sz), Vector2(sz, sz)), src, mod)
 
 
 func _draw() -> void:
@@ -67,7 +84,6 @@ func _draw() -> void:
 	cell = floorf(size.x / cols)
 	if cell < 4.0:
 		return
-	var tiles_mode := use_tiles and atlas != null
 	var rows := int(size.y / cell)
 	offset = Vector2((size.x - cols * cell) / 2.0, (size.y - rows * cell) / 2.0)
 	var hp: Vector2i = game.hero["pos"]
@@ -75,11 +91,14 @@ func _draw() -> void:
 		clampi(hp.x - cols / 2, 0, maxi(0, game.w - cols)),
 		clampi(hp.y - rows / 2, 0, maxi(0, game.h - rows)))
 
+	if use_tiles and atlas != null:
+		_draw_tiles(rows)
+		return
+
 	var fs := int(cell * 0.8)
 	var asc := font.get_ascent(fs)
 	var desc := font.get_descent(fs)
 	var baseline := (cell - (asc + desc)) / 2.0 + asc
-	var small_fs := maxi(8, int(cell * 0.34))
 	var wall_col := Color(str(game.floor_theme["wall"]))
 	var floor_col := Color(str(game.floor_theme["floor"]))
 	var sealed := game.stairs_sealed()
@@ -99,26 +118,25 @@ func _draw() -> void:
 			if not lit and game.explored[i] == 0:
 				continue
 			var cell_pos := offset + Vector2(vx * cell, vy * cell)
-			var dim := 1.0 if lit else 0.4
 			var terrain: int = game.tiles[i]
 			var mon: Dictionary = mons[p] if lit and mons.has(p) else {}
 
-			if tiles_mode:
-				_draw_tile_cell(p, cell_pos, terrain, mon, lit, dim, wall_col, floor_col, sealed, small_fs)
-			else:
-				_draw_ascii_cell(p, cell_pos, terrain, mon, lit, wall_col, floor_col, sealed, fs, baseline)
-
+			_draw_ascii_cell(p, cell_pos, terrain, mon, lit, wall_col, floor_col, sealed, fs, baseline)
 			if not mon.is_empty():
-				# Yellow frame around the selected target.
-				if game.target != null and is_same(mon, game.target):
-					draw_rect(Rect2(cell_pos + Vector2(1, 1), Vector2(cell - 2, cell - 2)), Color("ffd75e"), false, 2.0)
-				# Small health bar under wounded monsters.
-				var frac: float = float(mon["hp"]) / float(mon["hp_max"])
-				if frac < 1.0:
-					var bar := Rect2(cell_pos + Vector2(cell * 0.1, cell * 0.9), Vector2(cell * 0.8, maxf(2.0, cell * 0.07)))
-					draw_rect(bar, Color(0.3, 0.05, 0.05))
-					bar.size.x *= clampf(frac, 0.0, 1.0)
-					draw_rect(bar, Color(0.9, 0.2, 0.2))
+				_draw_target_and_health(mon, cell_pos)
+
+
+func _draw_target_and_health(mon: Dictionary, cell_pos: Vector2) -> void:
+	# Yellow frame around the selected target.
+	if game.target != null and is_same(mon, game.target):
+		draw_rect(Rect2(cell_pos + Vector2(1, 1), Vector2(cell - 2, cell - 2)), Color("ffd75e"), false, 2.0)
+	# Small health bar under wounded monsters.
+	var frac: float = float(mon["hp"]) / float(mon["hp_max"])
+	if frac < 1.0:
+		var bar := Rect2(cell_pos + Vector2(cell * 0.1, cell * 0.92), Vector2(cell * 0.8, maxf(3.0, cell * 0.08)))
+		draw_rect(bar, Color(0.15, 0.03, 0.03))
+		bar.size.x *= clampf(frac, 0.0, 1.0)
+		draw_rect(bar, Color(0.95, 0.25, 0.2))
 
 
 func _monster_color(mon: Dictionary) -> Color:
@@ -166,32 +184,95 @@ func _draw_ascii_cell(p: Vector2i, cell_pos: Vector2, terrain: int, mon: Diction
 	draw_string(font, cell_pos + Vector2(0, baseline), ch, HORIZONTAL_ALIGNMENT_CENTER, cell, fs, col)
 
 
-func _draw_tile_cell(p: Vector2i, cell_pos: Vector2, terrain: int, mon: Dictionary, lit: bool, dim: float,
-		wall_col: Color, floor_col: Color, sealed: bool, small_fs: int) -> void:
-	var shade := Color(dim, dim, dim)
-	# Terrain, tinted with the floor theme.
-	match terrain:
-		DungeonGen.WALL:
-			_tile("wall", cell_pos, wall_col * shade)
-		DungeonGen.WATER:
-			_tile("water", cell_pos, shade)
-		DungeonGen.LAVA:
-			_tile("lava", cell_pos, shade)
-		_:
-			_tile("floor", cell_pos, floor_col.lightened(0.25) * shade)
-	if p == game.stairs:
-		_tile("sealed" if sealed else "stairs", cell_pos, shade)
-	if game.items.has(p):
-		_tile(String(game.items[p]), cell_pos, shade)
-	if not mon.is_empty():
-		var body: String = BODY.get(String(mon["key"]), "humanoid")
-		_tile(body, cell_pos, _monster_color(mon))
-		# Letter in the corner so different monsters with the same body stay identifiable.
-		var letter: String = mon["ch"]
-		draw_string(font, cell_pos + Vector2(1, small_fs), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, small_fs, Color(0, 0, 0, 0.8))
-		draw_string(font, cell_pos + Vector2(0, small_fs - 1), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, small_fs, Color.WHITE)
-	if p == game.hero["pos"]:
-		_tile("hero", cell_pos, Color(1, 1, 1, 0.45 if game.hero["hidden"] else 1.0))
+## Tile mode (R-23): three passes so sprites can overlap neighbouring squares.
+##   1. terrain   2. shadows, items, figures, frames   3. torchlight and memory darkness
+func _draw_tiles(rows: int) -> void:
+	var theme: String = THEME_TILES.get(String(game.floor_theme["name"]), "cellars")
+	var hp: Vector2i = game.hero["pos"]
+	var sealed := game.stairs_sealed()
+	var t := Time.get_ticks_msec() / 1000.0
+	var mons := {}
+	for m in game.monsters:
+		if m["hp"] > 0:
+			mons[m["pos"]] = m
+	var cells: Array = []   # [p, cell_pos, lit]
+	for vy in rows:
+		for vx in cols:
+			var p := origin + Vector2i(vx, vy)
+			if p.x >= game.w or p.y >= game.h:
+				continue
+			var i := p.y * game.w + p.x
+			var lit := game.vis[i] == 1
+			if not lit and game.explored[i] == 0:
+				continue
+			cells.append([p, offset + Vector2(vx * cell, vy * cell), lit])
+
+	# 1. Terrain
+	for c in cells:
+		var p: Vector2i = c[0]
+		var pos: Vector2 = c[1]
+		var v := "a" if ((p.x * 73856093) ^ (p.y * 19349663)) & 1 == 0 else "b"
+		match game.tiles[p.y * game.w + p.x]:
+			DungeonGen.WALL:
+				var below := p + Vector2i(0, 1)
+				var face := below.y < game.h and game.tiles[below.y * game.w + below.x] != DungeonGen.WALL
+				_tile("%s_%s_%s" % [theme, "face" if face else "top", v], pos)
+			DungeonGen.WATER:
+				_tile("water", pos)
+			DungeonGen.LAVA:
+				_tile("lava", pos)
+			_:
+				_tile("%s_floor_%s" % [theme, v], pos)
+		if p == game.stairs:
+			_tile("sealed" if sealed else "stairs", pos)
+
+	# 2. Items, then figures (shadow first), with a gentle bob
+	for c in cells:
+		var p: Vector2i = c[0]
+		var pos: Vector2 = c[1]
+		var lit: bool = c[2]
+		var bob := sin(t * 3.0 + p.x * 1.7 + p.y * 2.3) * cell * 0.025
+		if game.items.has(p):
+			_shadow(pos, 0.24)
+			_tile(String(game.items[p]), pos + Vector2(0, bob * 0.6 - cell * 0.04), Color.WHITE, 0.8)
+		if lit and mons.has(p):
+			var mon: Dictionary = mons[p]
+			_shadow(pos, 0.34)
+			var mod := Color.WHITE
+			if mon.get("restrained", false):
+				mod = Color(0.7, 1.0, 0.6)
+			if int(mon.get("turned", 0)) > 0:
+				mod = Color(0.6, 0.6, 0.7, 0.8)
+			_tile("m_" + String(mon["key"]), pos + Vector2(0, bob - cell * 0.05), mod)
+			_draw_target_and_health(mon, pos)
+		if p == hp:
+			_shadow(pos, 0.32)
+			var alpha := 0.45 if game.hero["hidden"] else 1.0
+			_tile("hero_" + String(game.hero["cls"]).to_lower(), pos + Vector2(0, bob - cell * 0.05), Color(1, 1, 1, alpha))
+
+	# 3. Lighting: darkness grows with distance from the hero; remembered squares are dim and cool.
+	var sp: Dictionary = GameData.SPECIES[game.hero["species"]]
+	var radius := 6.0 + (3.0 if sp["darkvision"] else 0.0)
+	for c in cells:
+		var p: Vector2i = c[0]
+		var pos: Vector2 = c[1]
+		if not c[2]:
+			draw_rect(Rect2(pos, Vector2(cell, cell)), DARK_REMEMBERED)
+			continue
+		var d := Vector2(p - hp).length()
+		var k := clampf((d - LIGHT_INNER) / maxf(1.0, radius - LIGHT_INNER), 0.0, 1.0)
+		if k > 0.0:
+			draw_rect(Rect2(pos, Vector2(cell, cell)), Color(DARK_EDGE, 0.7 * pow(k, 1.3)))
+	var centre := offset + (Vector2(hp - origin) + Vector2(0.5, 0.5)) * cell
+	var glow_r := cell * (LIGHT_INNER + 2.0)
+	draw_texture_rect(glow_tex, Rect2(centre - Vector2(glow_r, glow_r), Vector2(glow_r, glow_r) * 2.0), false)
+
+
+## Soft oval shadow under an item or figure.
+func _shadow(pos: Vector2, width: float) -> void:
+	draw_set_transform(pos + Vector2(cell * 0.5, cell * 0.9), 0.0, Vector2(1.0, 0.32))
+	draw_circle(Vector2.ZERO, cell * width, Color(0, 0, 0, 0.32))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _cell_at(pos: Vector2) -> Vector2i:

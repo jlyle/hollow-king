@@ -43,7 +43,8 @@ Saves and settings live in `~/.local/share/godot/app_userdata/Depths of the Holl
 | **Rests** | Taking the stairs is a Short Rest (spend Hit Dice). Arriving on floors 5, 9, 13, 17 and 20 gives a Long Rest. |
 | **Items** | Healing / Greater Healing potions, gold, +1/+2/+3 weapons and armor. |
 | **Save / resume** | Autosaves after every action and when the window loses focus or closes. **Continue** on the title screen. The save is deleted on death or victory (permadeath), and the dice state is saved, so quitting can't reroll bad luck. |
-| **Sound, tiles, settings** | 15 original sound effects and an optional 16×16 pixel **tileset** instead of ASCII. **Settings** (title screen or pause menu): sound, tiles, map zoom, fullscreen; remembered between sessions. |
+| **Graphics** | Warm, chunky cartoon art in the spirit of Spelunky 2, all original: textured rock walls with front faces, a look per area, a sprite for every class and monster, shadows, torchlight and a gentle idle bob. ASCII mode is still one switch away. |
+| **Sound, settings** | 15 original sound effects. **Settings** (title screen or pause menu): sound, tiles, map zoom, fullscreen; remembered between sessions. |
 | **Desktop UX** | Map on the left, sidebar with status, log and buttons (each labelled with its key) on the right. **Explore** auto-walks to unexplored areas. Resizable window, F11 fullscreen. In-game **Controls** screen (? / F1) lists every key, click and map symbol. |
 
 ### Class features implemented
@@ -76,16 +77,17 @@ scripts/game.gd        rules, turn loop, monster AI (no UI code)
 scripts/map_view.gd    ASCII / tile renderer + mouse input
 scripts/main.gd        title screen, sidebar, buttons, spell/pause/settings screens, sound
 audio/*.wav            sound effects (generated)
-art/tiles.png          16x16 tileset atlas (generated); art/tiles_preview.png is a 6x preview
+art/tiles.png          64x64 cartoon tileset atlas (generated); art/tiles_preview.png shows every tile, labelled
+scripts/tile_atlas.gd  tile name -> atlas index (generated with the atlas; don't edit by hand)
 testing.html           smoke-test checklist (open in any browser)
 tools/make_sounds.py   regenerates audio/  (python3 + numpy)
-tools/make_tiles.py    regenerates art/tiles.png (python3 + Pillow); edit the pixel grids to redraw tiles
+tools/make_tiles.py    paints the whole tileset (python3 + Pillow): edit colours/shapes there, re-run, done
 tools/make_icons.py    regenerates art/icon_512.png (app-menu icon) from the hero sprite
 tools/build.sh         Linux build: check | build | run | install | uninstall
 packaging/             app-menu (.desktop) entry template
 export_presets.cfg     "Linux" export preset (x86_64, PCK embedded in the binary)
 ```
-To use a different tileset, replace `art/tiles.png` with any 16×16 atlas in the same layout (see the top of `tools/make_tiles.py`).
+To change the art, edit `tools/make_tiles.py` and run it; it rewrites `art/tiles.png` and `scripts/tile_atlas.gd` together.
 Balance knobs: `XP_MULT` and `LONG_REST_FLOORS` in `game.gd`; monster `lo`/`hi` floor ranges in `game_data.gd`; monster count formula in `Game._spawn()`.
 
 ## Legal

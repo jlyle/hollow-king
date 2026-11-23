@@ -112,7 +112,7 @@ var settings_panel: Control
 const SETTINGS_PATH := "user://settings.cfg"
 const SOUNDS := ["step", "hit", "crit", "miss", "hurt", "kill", "spell", "heal", "pickup",
 	"levelup", "descend", "death", "victory", "enemy_spell", "summon"]
-var settings := {"sound": true, "tiles": false, "zoom": 1, "fullscreen": false}
+var settings := {"sound": true, "tiles": true, "zoom": 1, "fullscreen": false}   ## R-23: tiles by default
 var sounds := {}
 var sfx: Array = []
 var sfx_i := 0
