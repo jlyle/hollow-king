@@ -54,6 +54,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | R-24 | Installable on any x86_64 Linux distro that has Flatpak, with its dependencies installed automatically | Done: built and played on Jim's Fedora machine 2026-11-23 | Single file `hollow-king.flatpak`; installing it pulls the Freedesktop runtime from Flathub (D-16). From B-11. |
 | R-25 | Free public release: downloadable at no cost from itch.io and GitHub Releases | In progress: licences and `tools/build.sh release` in repo; first upload pending | Two downloads per version: `hollow-king-<ver>-linux-x86_64.tar.gz` (plain binary) and `hollow-king-<ver>.flatpak`, plus `SHA256SUMS` (D-17). |
 | R-26 | Background music in a cheesy, 90s General-MIDI style | Built; awaiting Jim's playtest | Asked for by Jim 2026-11-23. A looping track for the title screen, one per area, and a boss track. Music on/off and volume in Settings; `M` toggles it. See 5.8, D-18. |
+| R-27 | Hidden sanctuaries: 0-3 secret rooms per floor holding treasure and/or healing potions; monsters can't enter them and the hero heals inside | Built; awaiting Jim's playtest | Asked for by Jim 2026-11-28. Floors 1-19. See 5.11, D-20. |
 
 ---
 
@@ -80,6 +81,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | D-17 | Open-source licences | Code: **MIT** (`LICENSE`). Original art, sound and text: **CC-BY-4.0**. Rules text: SRD 5.2.1 under CC-BY-4.0 (C-04). Godot Engine: MIT, notice shown on Credits (C-14). Summary in `LICENSES.md`; metainfo `project_license` = `MIT AND CC-BY-4.0`. Chosen by Jim 2026-11-23 | 2026-11-23 |
 | D-18 | How music is made | Original, composed and synthesized by `tools/make_music.py` (numpy + ffmpeg) with GM-style instruments (brass, strings, harpsichord, organ, flute, square lead, slap-ish bass, drum kit, orchestra hit). Saved as looping mono OGG (`audio/music_*.ogg`), so no MIDI player is needed in Godot. Same licence as other assets (D-17). | 2026-11-23 |
 | D-19 | Tougher level-1 heroes | +6 max HP at level 1 on top of the SRD formula (house rule, see 5.7). Asked for by Jim 2026-11-23: level-1 heroes died too easily. Existing saved runs keep their old HP | 2026-11-23 |
+| D-20 | How sanctuaries work | Hidden behind a secret door that looks like wall. Found by **bumping** the wall, by **passive Perception** (10 + WIS + proficiency for Rogue/Ranger) ≥ 13 when next to it, or by **searching** (Wait/Space within 2 squares: d20 + WIS (+prof) vs DC 13). A "faint draft" message hints when you pass within 2 squares. Inside (and in the doorway): monsters can't enter or attack you and lose interest; you heal 10% of max HP (min 1) per turn and poison ends. The peace works both ways: no attacks or harmful spells from inside (healing spells allowed). Unlimited healing is deliberate (Jim's request); time doesn't pass elsewhere, so it doesn't make monsters stronger. | 2026-11-28 |
 
 ---
 
@@ -97,6 +99,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 
 - Maps grow with depth (about 51×36 up to 70×46).
 - Stairs are placed at the farthest reachable square from the start.
+- Floors 1-19 may have 0-3 hidden sanctuaries (R-27, 5.11).
 - Taking the stairs is a **Short Rest**. Arriving on floors **5, 9, 13, 17, 20** gives a **Long Rest**.
 
 ### 5.2 Hero
@@ -171,6 +174,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 ### 5.5 Items
 - Potion of Healing (2d4+2) and Greater Healing (4d4+4).
 - Gold.
+- Treasure chest (sanctuaries only, R-27): 25-50 × floor number gold.
 - Weapon and armor upgrades from +1 to +3.
 
 ### 5.6 Saving (R-09)
@@ -183,6 +187,7 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 ### 5.7 Deliberate simplifications of the rules
 - One square per turn. Every awake monster acts once per hero turn, with no initiative order.
 - No death saves.
+- Searching for secret doors is the Wait action; passive Perception uses proficiency only for Rogue and Ranger (D-20).
 - Heroes start with 6 extra HP at level 1 (D-19), a house rule to soften the deadly early floors.
 - Spell slots are a single pool, not tracked by spell level. Leveled spells are always cast at your highest available slot level.
 - Areas are measured in squares (1 square = 5 ft); cones aim at your current target.
@@ -221,6 +226,13 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 - **Mouse:** left-click a neighbouring square to move/attack; left-click a distant explored square to auto-walk; left-click an enemy to select it (casters/Ranger also attack); **right-click** to inspect any square; **mouse wheel** to zoom.
 - **Explore:** auto-walks to the nearest unexplored area or visible item; stops when an enemy appears or you're hurt. When nothing is left, it walks to the stairs.
 - **Map zoom** (Settings, wheel, +/-): Small 41 / Medium 31 / Large 23 squares across. Default Medium.
+### 5.11 Hidden sanctuaries (R-27, D-20)
+- **Count:** 0-3 per floor on floors 1-19 (none on 20). Each is a small 3×3 to 4×4 room carved into solid rock next to a reachable floor square, joined by one secret door.
+- **Contents:** a healing fountain (decoration) in the middle, plus one of: treasure (chest, 30% chance of a weapon or armor upgrade), healing (2 potions; Greater on floor 8+ half the time), or both (chest + 1 potion).
+- **Finding:** bump the wall, passive Perception ≥ 13 when adjacent, or Wait to search within 2 squares (d20 + WIS (+prof for Rogue/Ranger) vs 13). First time within 2 squares: "You feel a faint draft..." hint.
+- **Safety:** monsters never step into the room or doorway, never attack or cast at a hero inside it, and wander off. The hero heals 10% of max HP (min 1) per turn there and poison ends. No attacks or harmful spells from inside.
+- **Look:** wooden door in the wall once found; warm golden glow over the room's floor; fountain tile in the centre. ASCII: `+` door, gold floor dots, `{` fountain, `=` chest.
+
 ---
 
 ## 6. Constraints (platform and legal)
@@ -296,3 +308,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | 5.10: status text (floor, HP, AC, XP, gold) is bright red at Jim's request. |
 | 2026-11-23 | 5.10 corrected: only the status **values** are bright red; labels (Floor, HP, AC, XP, Gold) keep their normal colour. |
 | 2026-11-28 | R-21: quitting (Quit button, Esc on title, window X) stops and releases music/sound first, so the terminal shows no leak warnings at exit. |
+| 2026-11-28 | R-27 hidden sanctuaries added (D-20, 5.11); 5.1, 5.5, 5.7 updated; 3 new tiles (door, chest, fountain). |

@@ -82,4 +82,7 @@ const INDEX := {
 	"m_oracle": 74,
 	"m_bone_warden": 75,
 	"m_hollow_king": 76,
+	"door": 77,
+	"chest": 78,
+	"fountain": 79,
 }

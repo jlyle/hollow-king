@@ -84,8 +84,69 @@ func generate(n: int, rand: RandomNumberGenerator) -> Dictionary:
 	if n >= 20:
 		stairs = Vector2i(-1, -1)
 
+	# R-27: hidden sanctuaries, carved after reachability so they stay off the normal map.
+	var sanctums: Array = []
+	if n < 20:
+		sanctums = _sanctums(rng.randi_range(0, 3), reachable, start, stairs)
+
 	return {"w": w, "h": h, "tiles": tiles, "start": start, "stairs": stairs, "boss": boss,
-		"reachable": reachable, "dist": dist, "theme": theme}
+		"reachable": reachable, "dist": dist, "theme": theme, "sanctums": sanctums}
+
+
+# --- Hidden sanctuaries (R-27, D-20) -----------------------------------------------
+
+## Carves up to `count` small rooms into solid rock, each behind one secret door (left as WALL
+## until found). Returns [{rect, door, fountain, kind, found, hinted, entered}].
+func _sanctums(count: int, reachable: Array, start: Vector2i, stairs_pos: Vector2i) -> Array:
+	var out: Array = []
+	var cand: Array = reachable.duplicate()
+	for _attempt in 400:
+		if out.size() >= count or cand.is_empty():
+			break
+		var f: Vector2i = cand[rng.randi_range(0, cand.size() - 1)]
+		if tiles[f.y * w + f.x] != FLOOR or f == start or f == stairs_pos:
+			continue
+		var dir: Vector2i = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)][rng.randi_range(0, 3)]
+		var door := f + dir
+		if door.x < 1 or door.y < 1 or door.x >= w - 1 or door.y >= h - 1 or tiles[door.y * w + door.x] != WALL:
+			continue
+		var rw := rng.randi_range(3, 4)
+		var rh := rng.randi_range(3, 4)
+		var r: Rect2i
+		if dir.y != 0:
+			var x0 := door.x - rng.randi_range(0, rw - 1)
+			r = Rect2i(x0, door.y - rh if dir.y < 0 else door.y + 1, rw, rh)
+		else:
+			var y0 := door.y - rng.randi_range(0, rh - 1)
+			r = Rect2i(door.x - rw if dir.x < 0 else door.x + 1, y0, rw, rh)
+		if not _solid_block(r.grow(1), door):
+			continue
+		# The door must be a wall with only its outside neighbour open, so it reads as plain wall.
+		var open_n := 0
+		for d in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+			var q: Vector2i = door + d
+			if tiles[q.y * w + q.x] != WALL:
+				open_n += 1
+		if open_n != 1:
+			continue
+		for y in range(r.position.y, r.end.y):
+			for x in range(r.position.x, r.end.x):
+				tiles[y * w + x] = FLOOR
+		var kinds := ["treasure", "healing", "both"]
+		out.append({"rect": r, "door": door, "fountain": r.get_center(), "kind": kinds[rng.randi_range(0, 2)],
+			"found": false, "hinted": false, "entered": false})
+	return out
+
+
+## True if every square of `r` (except `skip`) is in bounds and solid wall.
+func _solid_block(r: Rect2i, skip: Vector2i) -> bool:
+	if r.position.x < 1 or r.position.y < 1 or r.end.x > w - 1 or r.end.y > h - 1:
+		return false
+	for y in range(r.position.y, r.end.y):
+		for x in range(r.position.x, r.end.x):
+			if Vector2i(x, y) != skip and tiles[y * w + x] != WALL:
+				return false
+	return true
 
 
 # --- Room-and-corridor layouts -------------------------------------------------

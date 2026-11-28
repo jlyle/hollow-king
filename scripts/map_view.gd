@@ -16,7 +16,9 @@ const ITEM_GLYPHS := {
 	"gold": ["$", "ffd447"],
 	"weapon": ["/", "7fe0ff"],
 	"armor": ["[", "7fe0ff"],
+	"chest": ["=", "ffd447"],
 }
+const SANCTUM_TINT := Color(1.0, 0.82, 0.45)   ## R-27: warm glow over sanctuary floors
 
 ## Floor theme name -> tile set prefix in TileAtlas (tools/make_tiles.py).
 const THEME_TILES := {
@@ -164,6 +166,15 @@ func _draw_ascii_cell(p: Vector2i, cell_pos: Vector2, terrain: int, mon: Diction
 			col = Color("ff5a1f")
 	if lit and terrain != DungeonGen.WALL:
 		draw_rect(Rect2(cell_pos, Vector2(cell, cell)), Color(floor_col, 0.22))
+	var sanct = game.sanctum_at(p)
+	if sanct != null:
+		col = SANCTUM_TINT
+		if p == sanct["door"]:
+			ch = "+"
+			col = Color("c08850")
+		elif p == sanct["fountain"]:
+			ch = "{"
+			col = Color("7fd8ff")
 	if p == game.stairs:
 		ch = ">"
 		col = Color("ff5a5a") if sealed else Color("ffffff")  # R-13: red = sealed
@@ -225,6 +236,15 @@ func _draw_tiles(rows: int) -> void:
 				_tile("%s_floor_%s" % [theme, v], pos)
 		if p == game.stairs:
 			_tile("sealed" if sealed else "stairs", pos)
+		var sanct = game.sanctum_at(p)
+		if sanct != null:
+			if p == sanct["door"]:
+				_tile("door", pos)
+			else:
+				var pulse := 0.16 + 0.06 * sin(t * 2.0 + p.x + p.y)
+				draw_rect(Rect2(pos, Vector2(cell, cell)), Color(SANCTUM_TINT, pulse))
+				if p == sanct["fountain"]:
+					_tile("fountain", pos)
 
 	# 2. Items, then figures (shadow first), with a gentle bob
 	for c in cells:

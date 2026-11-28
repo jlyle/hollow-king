@@ -26,6 +26,10 @@ const WIS := 4
 const CHA := 5
 
 ## Spells that need a visible enemy target.
+## R-27: the only spells allowed inside a sanctuary.
+const PEACEFUL_SPELLS := ["healing_word", "cure_wounds"]
+const SANCTUM_DC := 13   ## D-20: Perception DC to find a secret door
+
 const TARGETED := ["fire_bolt", "magic_missile", "burning_hands", "shatter", "fireball",
 	"sacred_flame", "guiding_bolt", "hunters_mark"]
 
@@ -40,7 +44,8 @@ var explored := PackedByteArray()
 var vis := PackedByteArray()
 var stairs := Vector2i(-1, -1)
 var monsters: Array = []
-var items: Dictionary = {}       ## Vector2i -> "potion" | "greater" | "gold" | "weapon" | "armor"
+var items: Dictionary = {}       ## Vector2i -> "potion" | "greater" | "gold" | "weapon" | "armor" | "chest"
+var sanctums: Array = []         ## R-27: hidden sanctuaries [{rect, door, fountain, kind, found, hinted, entered}]
 var hero: Dictionary = {}
 var astar := AStarGrid2D.new()
 var over := false
@@ -106,6 +111,7 @@ func start_floor(n: int) -> void:
 	tiles = d["tiles"]
 	floor_theme = d["theme"]
 	stairs = d["stairs"]
+	sanctums = d.get("sanctums", [])
 	explored = PackedByteArray()
 	explored.resize(w * h)
 	explored.fill(0)
@@ -202,6 +208,32 @@ func _spawn(d: Dictionary) -> void:
 	if floor_num >= 5 and hero["armor_bonus"] < 3 and rng.randf() < 0.25:
 		_place_item(spots, "armor")
 
+	# R-27: sanctuary contents (treasure and/or healing), placed around the fountain.
+	for s in sanctums:
+		var r: Rect2i = s["rect"]
+		var cells: Array = []
+		for y in range(r.position.y, r.end.y):
+			for x in range(r.position.x, r.end.x):
+				if Vector2i(x, y) != s["fountain"]:
+					cells.append(Vector2i(x, y))
+		_shuffle(cells)
+		var loot: Array = []
+		var pot := "greater" if floor_num >= 8 and rng.randf() < 0.5 else "potion"
+		match String(s["kind"]):
+			"treasure":
+				loot = ["chest"]
+				if rng.randf() < 0.3:
+					if hero["weapon_bonus"] < 3 and (hero["armor_bonus"] >= 3 or rng.randf() < 0.5):
+						loot.append("weapon")
+					elif hero["armor_bonus"] < 3:
+						loot.append("armor")
+			"healing":
+				loot = [pot, pot]
+			_:
+				loot = ["chest", pot]
+		for i in mini(loot.size(), cells.size()):
+			items[cells[i]] = loot[i]
+
 
 func _add_monster(md: Dictionary, p: Vector2i) -> Dictionary:
 	var m := md.duplicate(true)
@@ -244,7 +276,7 @@ func save_run() -> void:
 		"seed_value": seed_value, "rng_seed": rng.seed, "rng_state": rng.state,
 		"floor_num": floor_num, "floor_theme": floor_theme, "w": w, "h": h,
 		"tiles": tiles, "explored": explored, "stairs": stairs,
-		"monsters": monsters, "items": items, "hero": hero,
+		"monsters": monsters, "items": items, "hero": hero, "sanctums": sanctums,
 		"turn": turn, "log_lines": log_lines, "bonus_used": bonus_used,
 	}
 	# Write to a temp file, then swap it in, so a kill mid-write never corrupts the save.
@@ -276,6 +308,7 @@ func load_run() -> bool:
 	stairs = data["stairs"]
 	monsters = data["monsters"]
 	items = data["items"]
+	sanctums = data.get("sanctums", [])
 	hero = data["hero"]
 	turn = data["turn"]
 	log_lines = data["log_lines"]
@@ -446,11 +479,20 @@ func inspect(p: Vector2i) -> void:
 		return
 	if items.has(p):
 		var names := {"potion": "Potion of Healing", "greater": "Potion of Greater Healing", "gold": "Gold",
-			"weapon": "Better weapon", "armor": "Better armor"}
+			"weapon": "Better weapon", "armor": "Better armor", "chest": "Treasure chest"}
 		say("%s. Walk over it to pick it up." % names.get(items[p], "An item"))
 		return
 	if p == stairs:
 		say("Stairs down%s." % (" - sealed by a guardian" if stairs_sealed() else ""))
+		return
+	var sanct = sanctum_at(p)
+	if sanct != null:
+		if p == sanct["fountain"]:
+			say("A healing fountain. Rest here: monsters can't enter, and you heal each turn.")
+		elif p == sanct["door"]:
+			say("The secret door of a sanctuary.")
+		else:
+			say("Sanctuary floor. Monsters can't enter; you heal each turn here.")
 		return
 	match tiles[p.y * w + p.x]:
 		DungeonGen.WALL:
@@ -589,15 +631,25 @@ func player_step(d: Vector2i) -> bool:
 	var from: Vector2i = hero["pos"]
 	var t: Vector2i = from + d
 	if not _can_step(from, d):
+		var secret = _secret_door_at(t)
+		if secret != null and (d.x == 0 or d.y == 0):
+			say("You push on the wall... it gives way!")
+			_reveal_sanctum(secret)
+			_end_turn()
+			return true
 		return false
 	var m = monster_at(t)
 	if m != null:
+		if in_sanctum(from):
+			say("[color=#e8c170]The sanctuary's peace stays your hand.[/color]")
+			return false
 		target = m
 		_hero_attack_action(m, false)
 	else:
 		hero["pos"] = t
 		fx("step")
 		_pickup()
+		_enter_sanctum_check()
 		if t == stairs:
 			if stairs_sealed():
 				say("[color=#ff6b6b]A ward seals the stairs. Defeat the %s first.[/color]" % _guardian_name())
@@ -622,6 +674,7 @@ func player_step_toward(dest: Vector2i) -> bool:
 func player_wait() -> void:
 	if over:
 		return
+	_search()
 	_end_turn()
 
 
@@ -685,6 +738,9 @@ func player_ranged(pref = null) -> void:
 	if kind == "":
 		return
 	if kind == "longbow":
+		if in_sanctum(hero["pos"]):
+			say("[color=#e8c170]The sanctuary's peace stays your hand.[/color]")
+			return
 		var t = _pick_target(pref)
 		if t == null:
 			say("No visible target for your longbow.")
@@ -731,6 +787,8 @@ func cannot_cast(key: String) -> String:
 	var lvl: int = sp["lvl"]
 	if sp["cls"] != hero["cls"]:
 		return "Not a %s spell." % hero["cls"]
+	if in_sanctum(hero["pos"]) and not key in PEACEFUL_SPELLS:
+		return "The sanctuary's peace forbids it."
 	if int(hero["level"]) < int(sp["min"]):
 		return "Requires level %d." % sp["min"]
 	if sp["cast"] == "bonus" and bonus_used:
@@ -1281,6 +1339,7 @@ func _hurt_hero(dmg: int, source: String) -> void:
 
 func _end_turn() -> void:
 	_compute_fov()
+	_sanctum_senses()
 	uncanny_used = false
 	for m in monsters.duplicate():
 		if over:
@@ -1300,6 +1359,7 @@ func _end_turn() -> void:
 		hero["rage"] -= 1
 		if int(hero["rage"]) == 0:
 			say("Your Rage fades.")
+	_sanctum_heal()
 	turn += 1
 	bonus_used = false
 	sneak_used = false
@@ -1357,6 +1417,12 @@ func _monster_act(m: Dictionary) -> void:
 		elif m.get("mini", false):
 			say("[color=#ff6b6b]The %s stands guard over the stairs![/color]" % m["name"])
 	if not m["awake"]:
+		return
+
+	# R-27: a hero in a sanctuary can't be reached or attacked; monsters lose interest.
+	if in_sanctum(hp):
+		if rng.randf() < 0.5 and not m.get("restrained", false):
+			_monster_wander(m)
 		return
 
 	if _monster_special(m, dist, sees):
@@ -1422,7 +1488,7 @@ func _monster_special(m: Dictionary, dist: int, sees: bool) -> bool:
 			if raised >= int(sm["n"]) or monsters.size() > 16:
 				break
 			var q: Vector2i = mp + d
-			if _walkable(q) and q != hero["pos"] and monster_at(q) == null:
+			if _walkable(q) and q != hero["pos"] and monster_at(q) == null and not in_sanctum(q):
 				var s := _add_monster(GameData.monster(sm["key"]), q)
 				s["awake"] = true
 				raised += 1
@@ -1533,7 +1599,7 @@ func _monster_move(m: Dictionary) -> void:
 	var path := astar.get_id_path(mp, hp)
 	if path.size() >= 2 and path.size() < 40:
 		var nxt: Vector2i = path[1]
-		if nxt != hp and monster_at(nxt) == null:
+		if nxt != hp and monster_at(nxt) == null and not in_sanctum(nxt):
 			m["pos"] = nxt
 			return
 	# Path blocked by another monster: try any step that gets closer.
@@ -1541,7 +1607,7 @@ func _monster_move(m: Dictionary) -> void:
 	var best := mp
 	for d in DungeonGen.DIRS:
 		var q: Vector2i = mp + d
-		if q == hp or monster_at(q) != null or not _can_step(mp, d):
+		if q == hp or monster_at(q) != null or not _can_step(mp, d) or in_sanctum(q):
 			continue
 		var dd := _cheb(q, hp)
 		if dd < best_d:
@@ -1559,7 +1625,7 @@ func _monster_flee(m: Dictionary) -> void:
 	var best := mp
 	for d in DungeonGen.DIRS:
 		var q: Vector2i = mp + d
-		if q == hp or monster_at(q) != null or not _can_step(mp, d):
+		if q == hp or monster_at(q) != null or not _can_step(mp, d) or in_sanctum(q):
 			continue
 		var dd := _cheb(q, hp)
 		if dd > best_d:
@@ -1572,7 +1638,7 @@ func _monster_wander(m: Dictionary) -> void:
 	var mp: Vector2i = m["pos"]
 	var d: Vector2i = DungeonGen.DIRS[rng.randi_range(0, 7)]
 	var q := mp + d
-	if q != hero["pos"] and monster_at(q) == null and _can_step(mp, d):
+	if q != hero["pos"] and monster_at(q) == null and _can_step(mp, d) and not in_sanctum(q):
 		m["pos"] = q
 
 
@@ -1582,14 +1648,14 @@ func _push(m: Dictionary, steps: int) -> void:
 		var mp: Vector2i = m["pos"]
 		var dir := Vector2i(signi(mp.x - hp.x), signi(mp.y - hp.y))
 		var q := mp + dir
-		if dir == Vector2i.ZERO or not _can_step(mp, dir) or monster_at(q) != null or q == hp:
+		if dir == Vector2i.ZERO or not _can_step(mp, dir) or monster_at(q) != null or q == hp or in_sanctum(q):
 			return
 		m["pos"] = q
 
 
 ## Spirit Guardians: enemies ending their turn within 3 squares make a WIS save.
 func _guardian_check(m: Dictionary) -> void:
-	if hero["conc"] != "spirit_guardians" or _cheb(m["pos"], hero["pos"]) > 3:
+	if hero["conc"] != "spirit_guardians" or _cheb(m["pos"], hero["pos"]) > 3 or in_sanctum(hero["pos"]):
 		return
 	var up := maxi(0, max_spell_level() - 3)
 	var dmg := roll(3 + up, 8)
@@ -1761,12 +1827,100 @@ func _pick_target(pref, remember := true) -> Variant:
 	return chosen
 
 
+# --- Hidden sanctuaries (R-27, D-20) -----------------------------------------------
+
+## The found sanctuary covering p (room or doorway), or null.
+func sanctum_at(p: Vector2i) -> Variant:
+	for s in sanctums:
+		var r: Rect2i = s["rect"]
+		if s["found"] and (r.has_point(p) or s["door"] == p):
+			return s
+	return null
+
+
+func in_sanctum(p: Vector2i) -> bool:
+	return sanctum_at(p) != null
+
+
+func _secret_door_at(p: Vector2i) -> Variant:
+	for s in sanctums:
+		if not s["found"] and s["door"] == p:
+			return s
+	return null
+
+
+func _perception_bonus() -> int:
+	return _mod("wis") + (prof() if hero["cls"] in ["Rogue", "Ranger"] else 0)
+
+
+func _reveal_sanctum(s: Dictionary) -> void:
+	s["found"] = true
+	s["hinted"] = true
+	var dp: Vector2i = s["door"]
+	tiles[dp.y * w + dp.x] = DungeonGen.FLOOR
+	astar.set_point_solid(dp, false)
+	fx("pickup")
+	say("[color=#e8c170]A hidden door! Warm light spills from a secret sanctuary.[/color]")
+	_compute_fov()
+
+
+## Hint when near an unfound door; passive Perception finds it when adjacent.
+func _sanctum_senses() -> void:
+	var hp: Vector2i = hero["pos"]
+	for s in sanctums:
+		if s["found"]:
+			continue
+		var dist := _cheb(hp, s["door"])
+		if dist <= 1 and 10 + _perception_bonus() >= SANCTUM_DC:
+			say("You notice a seam in the stonework...")
+			_reveal_sanctum(s)
+		elif dist <= 2 and not s["hinted"]:
+			s["hinted"] = true
+			say("[color=#bfb6a3]You feel a faint draft. A hidden door may be close - wait (Space) to search.[/color]")
+
+
+## The Wait action doubles as a Search for secret doors within 2 squares.
+func _search() -> void:
+	var hp: Vector2i = hero["pos"]
+	for s in sanctums:
+		if s["found"] or _cheb(hp, s["door"]) > 2:
+			continue
+		var r := d20() + _perception_bonus()
+		if r >= SANCTUM_DC:
+			say("You search the walls (Perception %d)..." % r)
+			_reveal_sanctum(s)
+		else:
+			say("You search the walls but find nothing (Perception %d)." % r)
+
+
+func _enter_sanctum_check() -> void:
+	var s = sanctum_at(hero["pos"])
+	if s != null and not s["entered"]:
+		s["entered"] = true
+		say("[color=#e8c170]You step into a sanctuary. Monsters cannot follow you here, and you heal while you rest.[/color]")
+
+
+## Heal 10% of max HP per turn (min 1) and end poison while inside a sanctuary.
+func _sanctum_heal() -> void:
+	if not in_sanctum(hero["pos"]):
+		return
+	if int(hero.get("poisoned", 0)) > 0:
+		hero["poisoned"] = 0
+		say("The sanctuary's light purges the poison.")
+	var missing: int = int(hero["hp_max"]) - int(hero["hp"])
+	if missing > 0:
+		var amt := mini(missing, maxi(1, int(hero["hp_max"]) / 10))
+		hero["hp"] = int(hero["hp"]) + amt
+		if int(hero["hp"]) >= int(hero["hp_max"]):
+			say("[color=#7fe08a]You are fully healed.[/color]")
+
+
 func _free_neighbor(p: Vector2i) -> Variant:
 	var dirs: Array = DungeonGen.DIRS.duplicate()
 	_shuffle(dirs)
 	for item in dirs:
 		var q: Vector2i = p + item
-		if _walkable(q) and q != hero["pos"] and q != stairs and monster_at(q) == null:
+		if _walkable(q) and q != hero["pos"] and q != stairs and monster_at(q) == null and not in_sanctum(q):
 			return q
 	return null
 
@@ -1803,6 +1957,10 @@ func _pickup() -> void:
 		"armor":
 			hero["armor_bonus"] = mini(3, int(hero["armor_bonus"]) + 1)
 			say("[color=#7fe0ff]You find +%d armor![/color]" % hero["armor_bonus"])
+		"chest":
+			var g := rng.randi_range(25, 50) * floor_num
+			hero["gold"] += g
+			say("[color=#ffd447]You open a treasure chest: %d gold![/color]" % g)
 
 
 func _health_word(m: Dictionary) -> String:

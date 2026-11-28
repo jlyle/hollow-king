@@ -412,6 +412,60 @@ def armor_icon():
     return img
 
 
+# --------------------------------------------------------------------------- sanctuaries (R-27)
+
+def secret_door():
+    """Arched wooden door set in a stone frame, warm light leaking round the edges."""
+    img = canvas()
+    g = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(g).rounded_rectangle([30, 20, 226, 250], radius=90, fill=150)
+    img.paste(Image.new("RGBA", (S, S), C("ffd27a")), (0, 0), g.filter(ImageFilter.GaussianBlur(14)))
+    shape(img, "rrect", [40, 26, 216, 250], C("8a8378"), radius=88, w=OW)              # stone arch
+    shape(img, "rrect", [62, 50, 194, 250], C("7a4a26"), radius=66, w=7, gloss=0.2)     # door leaf
+    d = ImageDraw.Draw(img)
+    for x in (95, 128, 161):                                                           # planks
+        d.line([(x, 60), (x, 246)], fill=C("5a3518"), width=5)
+    for y in (104, 196):                                                               # iron bands
+        d.rectangle([66, y, 190, y + 12], fill=C("3a3a42"))
+    shape(img, "ellipse", [158, 150, 180, 172], C("e8c170"), w=5, gloss=0.6)          # ring handle
+    return img
+
+
+def chest():
+    img = canvas()
+    shape(img, "rrect", [40, 116, 216, 222], C("8a4f22"), radius=12, w=OW, gloss=0.2)   # body
+    shape(img, "rrect", [40, 66, 216, 128], C("a0602a"), radius=40, w=OW, gloss=0.4)    # lid
+    d = ImageDraw.Draw(img)
+    for x in (70, 186):                                                                # gold bands
+        d.rectangle([x - 8, 70, x + 8, 220], fill=C("e0b040"))
+    d.rectangle([44, 124, 212, 134], fill=C("e0b040"))
+    shape(img, "rrect", [112, 118, 144, 156], C("f2c23a"), radius=6, w=6, gloss=0.5)   # lock
+    for x, y in [(96, 58), (140, 48), (176, 60)]:                                       # coins peeking out
+        shape(img, "ellipse", [x - 18, y - 12, x + 18, y + 12], C("f2c23a"), w=5, gloss=0.6)
+    d = ImageDraw.Draw(img)
+    d.polygon([(206, 30), (212, 46), (228, 52), (212, 58), (206, 74), (200, 58), (184, 52), (200, 46)], fill=C("fffbe0"))
+    return img
+
+
+def fountain():
+    img = canvas()
+    g = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(g).ellipse([20, 40, 236, 250], fill=140)
+    img.paste(Image.new("RGBA", (S, S), C("9fe8ff")), (0, 0), g.filter(ImageFilter.GaussianBlur(18)))
+    shape(img, "ellipse", [34, 150, 222, 236], C("a8a196"), w=OW)                    # basin rim
+    shape(img, "ellipse", [54, 162, 202, 222], C("4fb6e8"), w=5, top=0.4, bot=0.1)   # water
+    shape(img, "rrect", [110, 92, 146, 190], C("bdb6a8"), radius=10, w=7)            # pillar
+    shape(img, "ellipse", [84, 78, 172, 112], C("a8a196"), w=7)                      # top bowl
+    d = ImageDraw.Draw(img)
+    for x0, x1 in [(100, 70), (156, 186)]:                                             # water arcs
+        d.line([(128, 70), ((x0 + x1) // 2, 54), (x1, 160)], fill=C("bff0ff"), width=8, joint="curve")
+    shape(img, "ellipse", [112, 40, 144, 76], C("9fe8ff"), w=5, gloss=0.8)           # spout
+    for (x, y, r) in [(60, 80, 12), (200, 96, 10), (186, 40, 8)]:                      # sparkles
+        d.polygon([(x, y - r), (x + r * 0.3, y - r * 0.3), (x + r, y), (x + r * 0.3, y + r * 0.3),
+                   (x, y + r), (x - r * 0.3, y + r * 0.3), (x - r, y), (x - r * 0.3, y - r * 0.3)], fill=C("fff3b0"))
+    return img
+
+
 # --------------------------------------------------------------------------- characters
 
 def feet(img, col, y=212, spread=26):
@@ -815,6 +869,9 @@ def main():
         add(f"hero_{cls}", resized(hero(cls), 0.9))
     for key, img in monsters().items():
         add(f"m_{key}", img)
+    add("door", secret_door())      # R-27
+    add("chest", chest())
+    add("fountain", fountain())
 
     rows = (len(TILES) + COLS - 1) // COLS
     atlas = Image.new("RGBA", (COLS * CELL, rows * CELL), (0, 0, 0, 0))
