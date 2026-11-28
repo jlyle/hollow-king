@@ -139,6 +139,7 @@ var btn_continue: Button
 
 
 func _ready() -> void:
+	get_tree().set_auto_accept_quit(false)   # close via _quit_game so audio is released first
 	theme = _make_theme()
 	add_child(_make_background())
 	_build_title()
@@ -501,6 +502,8 @@ func _notification(what: int) -> void:
 	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST]:
 		if game and game_screen and game_screen.visible:
 			game.save_run()
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_quit_game()
 
 
 # --- Screens -----------------------------------------------------------------------
@@ -1381,10 +1384,30 @@ func _save_and_title() -> void:
 
 
 ## Saves any run in progress, then closes the app.
+var _quitting := false
+
 func _quit_game() -> void:
+	if _quitting:
+		return
+	_quitting = true
 	if game != null and not game.over and game_screen.visible:
 		game.save_run()
+	_release_audio()
+	await get_tree().process_frame   # let the audio server drop the stopped playbacks
 	get_tree().quit()
+
+
+## Stops music and sound and drops the streams, so nothing is still in use at exit
+## (otherwise Godot prints "ObjectDB instances leaked" / "resources still in use").
+func _release_audio() -> void:
+	for t in _music_tweens:
+		if t != null and (t as Tween).is_valid():
+			(t as Tween).kill()
+	for pl in music_players + sfx:
+		(pl as AudioStreamPlayer).stop()
+		(pl as AudioStreamPlayer).stream = null
+	music.clear()
+	sounds.clear()
 
 
 # --- Desktop controls (R-22) ---------------------------------------------------------------

@@ -295,3 +295,4 @@ A roguelike game for **Linux desktop** (D-14; originally planned for Google Play
 | 2026-11-23 | D-19: level-1 heroes get +6 HP (5.2, 5.7). |
 | 2026-11-23 | 5.10: status text (floor, HP, AC, XP, gold) is bright red at Jim's request. |
 | 2026-11-23 | 5.10 corrected: only the status **values** are bright red; labels (Floor, HP, AC, XP, Gold) keep their normal colour. |
+| 2026-11-28 | R-21: quitting (Quit button, Esc on title, window X) stops and releases music/sound first, so the terminal shows no leak warnings at exit. |
